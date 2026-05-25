@@ -24,6 +24,7 @@ export default {
     load(){
       return this.$store.getters.getFilteredDevices(this.term);
     },
+
     async initScanner() {
       this.$store.commit('setScanMode', true);
       try {
@@ -37,12 +38,12 @@ export default {
 </script>
 
 <template>
-  <VSheet elevation="2">
-    <VCard
-      variant="text"
-      max-width="1200"
-      class="mx-auto"
-    >
+  <VSheet
+    class="pa-4 mx-auto"
+    color="transparent"
+    max-width="1200"
+  >
+    <VCard>
       <template #append>
         <VMenu>
           <template #activator="{props}">
@@ -54,27 +55,28 @@ export default {
               icon="mdi-dots-vertical"
             />
           </template>
+          <VList class="py-0">
+            <VListItem
+              prepend-icon="mdi-plus"
+              :title="$t('Add device')"
+              @click="openAddDevice"
+            />
+            <VListItem
+              prepend-icon="mdi-refresh"
+              :title="$t('Scan devices')"
+              @click="initScanner"
+            />
+          </VList>
         </VMenu>
       </template>
       <template #title>
         {{ $t('My devices') }}
       </template>
       <template #text>
-        <VSheet class="mb-4 text-right">
-          <VBtn
-            class="mr-4"
-            prepend-icon="mdi-plus"
-            :text="$t('Add device')"
-            @click="openAddDevice"
-          />
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            prepend-icon="mdi-refresh"
-            :text="$t('Scan devices')"
-            @click="initScanner"
-          />
-        </VSheet>
+        <VSheet
+          class="mb-4 text-right"
+          color="transparent"
+        />
         <VTextField
           v-model="term"
           append-inner-icon="mdi-magnify"

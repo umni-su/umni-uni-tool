@@ -100,7 +100,8 @@ export default {
     <VEmptyState v-else>
       <VProgressCircular
         indeterminate
-        :size="100"
+        color="primary"
+        :size="64"
       />
     </VEmptyState>
   </VWindowItem>

@@ -1,4 +1,5 @@
 export default {
+  appNotifications: [],
   theme: localStorage.getItem('theme') !== null ? localStorage.getItem('theme') : 'light',
   loading: false,
   debug: false,
@@ -9,6 +10,8 @@ export default {
   activeDevice: null,
   addDevice: null,
   deviceRequestError: false,
+  deviceConfiguration: null,
+  reboot: false,
 
   state: {
     info: null,           // /api/systeminfo

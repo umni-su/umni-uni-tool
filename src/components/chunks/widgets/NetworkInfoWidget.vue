@@ -34,7 +34,6 @@ export default {
   >
     <VCardText>
       <VCarousel
-        :cycle="true"
         color="primary"
         hide-delimiter-background
         :show-arrows="false"

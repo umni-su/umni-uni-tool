@@ -1,108 +1,62 @@
 <script>
-import * as echarts from 'echarts';
-import {markRaw} from "vue";
-import RealTimeGraphNotification from "@/components/chunks/RealTimeGraphNotification.vue";
+
+import HistoryChartItem from "@/components/chunks/HistoryChartItem.vue";
 
 export default {
   name: "OneWirePanel",
-  components: {RealTimeGraphNotification},
+  components: {HistoryChartItem},
   data() {
     return {
-      mode: 'ow',
+      mode: 'onewire',
       handler: null,
-      chart: null
+      state: []
     }
   },
   computed: {
-    interval() {
-      return this.$store.getters['getRefreshInterval']
+    conf(){
+      return this.$store.getters['getOneWireConf']
     },
-    state() {
-      return this.$store.getters['getOneWireState']
+    allData(){
+      return this.conf?.map(c=>{
+        c.history = this.state?.find(s => s.serial === c.serial)?.history
+        return c
+      })
     },
-    timeChart() {
-      return this.$store.state.charts.timeOw
+    lastMessage(){
+      return this.$store.getters['lastMessage']
     },
-    dataChart() {
-      return this.$store.state.charts.ow
-    },
-    chartOptions() {
-      return {
-        dataZoom: [
-          {
-            type: 'inside'
-          }
-        ],
-        grid: {
-          left: '80px',
-          right: '50px',
-        },
-        tooltip: {
-          trigger: 'axis'
-        },
-        xAxis: {
-          type: 'category',
-          data: this.timeChart
-        },
-        yAxis: {
-          type: 'value',
-          scale: true,
-          axisLabel: {
-            formatter: '{value} °C'
-          }
-        },
-        legend: {
-          data: []
-        },
-        toolbox: {
-          feature: {
-            saveAsImage: {}
-          }
-        },
-        series: this.dataChart
-      };
-    }
   },
   watch: {
-    async interval() {
-      clearInterval(this.handler)
-      this.handler = setInterval(async () => {
-        await this.getState()
-      }, this.interval)
-      await this.getState()
+    lastMessage(v){
+      if(v?.data?.capability === 'onewire'){
+        const sn = v?.data?.serial
+        const ts = v?.data?.timestamp
+        const val = v?.data?.value
+        this.state = this.state?.map(state => {
+          if(state.serial === sn){
+            state.history.timestamps.shift()
+            state.history.timestamps.push(ts)
+            state.history.values.shift()
+            state.history.values.push(val)
+          }
+          return state
+        })
+      }
     }
   },
-  async created() {
-    this.handler = setInterval(async () => {
-      await this.getState()
-    }, this.interval)
+  async mounted() {
+    await this.getConf()
     await this.getState()
-    await Promise.resolve(
-      this.$nextTick(() => {
-        const height = this.$refs.card.$el.offsetHeight
-        this.$refs.chart.$el.style.height = `${height}px`
-        this.chart = markRaw(echarts.init(this.$refs.chart.$el))
-        this.chart.setOption(this.chartOptions)
-        const legendData = this.dataChart.map(ow => ow.name)
-        this.chart.setOption({legend: {data: legendData}})
-        window.addEventListener('resize', () => {
-          this.chart.resize()
-        })
-      })
-    )
-  },
-  unmounted() {
-    clearInterval(this.handler)
   },
   methods: {
-    async getState() {
-      await this.$store.dispatch('getOneWireState')
-      this.chart?.setOption({
-        xAxis: {
-          data: this.timeChart
-        },
-        series: this.dataChart
-      })
+    async getState(){
+      const res = await this.$store.dispatch('getState',this.mode)
+      if(res?.success){
+        this.state = res.data.state
+      }
+    },
+    async getConf(){
+      await this.$store.dispatch('getOneWireConf')
     }
   }
 }
@@ -120,14 +74,37 @@ export default {
       <template #title>
         {{ $t('1-wire sensors') }}
       </template>
-      <template #append>
-        <RealTimeGraphNotification />
-      </template>
       <template #text>
-        <VSheet
-          ref="chart"
-          :min-height="400"
-        />
+        <VSheet>
+          <VContainer fluid>
+            <VRow>
+              <VCol
+                v-for="item in allData"
+                :key="item.serial"
+                cols="12"
+                md="6"
+              >
+                <HistoryChartItem
+                  v-if="item.history"
+                  variant="tonal"
+                  :label="item.label"
+                  :history="item.history"
+                  color="secondary"
+                >
+                  <template #append>
+                    <VBtn
+                      color="secondary"
+                      icon="mdi-pencil"
+                      variant="tonal"
+                      rounded="pill"
+                      density="comfortable"
+                    />
+                  </template>
+                </HistoryChartItem>
+              </VCol>
+            </VRow>
+          </VContainer>
+        </VSheet>
       </template>
     </VCard>
   </vwindowitem>

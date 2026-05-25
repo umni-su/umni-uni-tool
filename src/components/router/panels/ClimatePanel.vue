@@ -402,7 +402,7 @@ export default {
                 v-model="values.mod"
                 :step="1"
                 :thumb-size="28"
-                :track-size="9"
+                :track-size="6"
                 :min="0"
                 :max="100"
                 :color="values.mod ? 'green' : 'secondary'"

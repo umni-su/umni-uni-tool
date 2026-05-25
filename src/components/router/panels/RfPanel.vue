@@ -43,7 +43,7 @@ export default {
   },
   methods: {
     async getState() {
-      await this.$store.dispatch('getRfState')
+      await this.$store.dispatch('getRf433Conf')
       //this.sensors = this.state
     }
   }

@@ -1,9 +1,13 @@
+use futures_util::StreamExt;
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::IpAddr;
-use tauri::Emitter;
+use std::sync::Mutex;
+use tauri::{AppHandle, Emitter, State};
+
+struct SseState(Mutex<Option<tauri::async_runtime::JoinHandle<()>>>);
 
 // Middleware: проверяет, является ли хост локальным IP (192.168.x.x, 10.x.x.x и т.д.)
 fn is_private_ip(host: &str) -> bool {
@@ -52,14 +56,14 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
             }
 
             client.get(url.to_string())
-        },
+        }
         "POST" => {
             let mut builder = client.post(&payload.url);
             if let Some(body) = payload.body {
                 builder = builder.json(&body);
             }
             builder
-        },
+        }
         _ => return Err("Method not supported".into()),
     };
 
@@ -98,9 +102,101 @@ fn start_mdns_discovery(app: tauri::AppHandle) {
     });
 }
 
+#[tauri::command]
+async fn start_sse_stream(
+    app: AppHandle,
+    state: State<'_, SseState>,
+    url: String,
+) -> Result<(), String> {
+    // 1. Остановка предыдущего потока
+    let mut lock = state.0.lock().map_err(|_| "Failed to lock state")?;
+    if let Some(handle) = lock.take() {
+        handle.abort();
+    }
+
+    // 2. Запуск асинхронной задачи
+    let handle = tauri::async_runtime::spawn(async move {
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&url)
+            .header("Accept", "text/event-stream")
+            .send()
+            .await;
+
+        match response {
+            Ok(res) if res.status().is_success() => {
+                // Сообщаем фронту об успешном коннекте
+                let _ = app.emit("sse-status", "connected");
+
+                let mut stream = res.bytes_stream();
+                let mut current_event = String::from("message");
+
+                while let Some(item) = stream.next().await {
+                    match item {
+                        Ok(bytes) => {
+                            let chunk = String::from_utf8_lossy(&bytes);
+
+                            for line in chunk.lines() {
+                                let line = line.trim();
+
+                                // Игнорируем пустые строки и комментарии (: ping)
+                                if line.is_empty() || line.starts_with(':') {
+                                    continue;
+                                }
+
+                                if let Some(event_name) = line.strip_prefix("event: ") {
+                                    current_event = event_name.to_string();
+                                } else if let Some(data_content) = line.strip_prefix("data: ") {
+                                    // Парсим JSON сразу в Rust
+                                    let parsed_data: Value = serde_json::from_str(data_content)
+                                        .unwrap_or(Value::String(data_content.to_string()));
+
+                                    let payload = json!({
+                                        "event": current_event,
+                                        "data": parsed_data
+                                    });
+
+                                    // Отправляем чистый объект во Vue
+                                    let _ = app.emit("sse-data", payload);
+
+                                    // Сброс типа события к дефолтному
+                                    current_event = String::from("message");
+                                }
+                            }
+                        }
+                        Err(_) => break, // Ошибка стрима (разрыв связи)
+                    }
+                }
+                let _ = app.emit("sse-status", "disconnected");
+            }
+            Ok(res) => {
+                let _ = app.emit("sse-status", format!("error: {}", res.status()));
+            }
+            Err(e) => {
+                let _ = app.emit("sse-status", format!("error: {}", e));
+            }
+        }
+    });
+
+    // 3. Сохраняем handle для возможности остановки
+    *lock = Some(handle);
+    Ok(())
+}
+
+#[tauri::command]
+async fn stop_sse_stream(state: State<'_, SseState>) -> Result<(), String> {
+    let mut lock = state.0.lock().unwrap();
+    if let Some(handle) = lock.take() {
+        handle.abort();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .manage(SseState(Mutex::new(None)))
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -114,9 +210,12 @@ pub fn run() {
         })
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             start_mdns_discovery,
-            secure_request
+            secure_request,
+            start_sse_stream,
+            stop_sse_stream
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

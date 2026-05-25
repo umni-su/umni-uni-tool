@@ -1,5 +1,8 @@
 export default {
   // UI
+  getAppNotifications(state){
+    return state.appNotifications;
+  },
   getTheme(state) {
     return state.theme
   },
@@ -15,7 +18,9 @@ export default {
   getVersion(state) {
     return state.version
   },
-
+  isReboot(state) {
+    return state.reboot
+  },
   isSidebarRail(state) {
     return state.sidebarRail
   },
@@ -71,6 +76,9 @@ export default {
   getHostname(state) {
     return state.activeDevice?.hostname || null
   },
+  getTitle(state) {
+    return state.activeDevice?.title || null
+  },
   getCapabilities(state) {
     return state.state.info?.capabilities || []
   },
@@ -90,6 +98,10 @@ export default {
 
   isDeviceError(state){
     return state.deviceRequestError
+  },
+
+  getDeviceConfiguration(state) {
+    return state.deviceConfiguration
   },
 
   // Проверка capabilities

@@ -8,11 +8,12 @@ import AppLoader from "../chunks/widgets/AppLoader.vue";
 import ModalDialog from "@/components/chunks/ModalDialog.vue";
 import AddDeviceModal from "@/components/AddDeviceModal.vue";
 import NavigationPanel from "@/components/chunks/NavigationPanel.vue";
+import RebootPage from "@/components/pages/RebootPage.vue";
 
 
 export default {
   name: "DefaultPage",
-  components: {NavigationPanel, AddDeviceModal, ModalDialog, ThemeSwitcher, UmniLogo, AppLoader},
+  components: {RebootPage, NavigationPanel, AddDeviceModal, ModalDialog, ThemeSwitcher, UmniLogo, AppLoader},
   data(){
     return {
       unListen: null,
@@ -42,6 +43,9 @@ export default {
     hostname(){
       return this.$store.getters['getHostname']?.toUpperCase();
     },
+    title(){
+      return this.systemInfo?.title?.toUpperCase();
+    },
     theme() {
       return this.$store.getters['getTheme']
     },
@@ -57,7 +61,9 @@ export default {
     color(){
       return this.$vuetify.theme.name === 'light' ? 'grey-lighten-4' : 'rgba(0,0,0,0.3)'
     },
-
+    isReboot(){
+      return this.$store.getters['isReboot']
+    }
   },
   watch:{
     isScanning(v){
@@ -140,7 +146,9 @@ export default {
 </script>
 
 <template>
-  <VSheet class="fill-height">
+  <VSheet
+    class="fill-height"
+  >
     <VAppBar
       class="safe"
       color="primary"
@@ -173,7 +181,7 @@ export default {
           v-if="hasDevice"
           class="text-title-medium font-weight-bold"
         >
-          {{ hostname }}
+          {{ title ?? hostname }}
         </div>
       </template>
       <template #append>
@@ -183,9 +191,14 @@ export default {
         />
       </template>
     </VAppBar>
-    <NavigationPanel />
+    <NavigationPanel ref="navigation" />
     <VMain class="fill-height">
+      <RebootPage
+        v-if="isReboot"
+        @start-scan="$refs.navigation.startScan"
+      />
       <VSheet
+        v-else
         :color="color"
         class="px-2 fill-height mx-auto"
         rounded="0"
@@ -233,43 +246,43 @@ export default {
             </template>
           </VEmptyState>
         </VSheet>
-        <ModalDialog
-          v-model="opened"
-          :title="$t('Choose device')"
-        >
-          <VList>
-            <VListItem
-              v-for="device in devices"
-              :key="device"
-              :value="device"
-              :title="device.hostname.toUpperCase()"
-              :subtitle="device.ip"
-            >
-              <template #append>
-                <VBtn
-                  density="compact"
-                  rounded="pill"
-                  icon="mdi-chevron-right"
-                  @click="setActiveDevice(device)"
-                />
-              </template>
-            </VListItem>
-          </VList>
-          <template #actions>
-            <VBtn
-              block
-              prepend-icon="mdi-plus"
-              rounded="pill"
-              variant="tonal"
-              :text="$t('Add device')"
-              @click="openAddDevice"
-            />
-          </template>
-        </ModalDialog>
         <AppLoader />
       </VSheet>
       <AddDeviceModal />
     </VMain>
+    <ModalDialog
+      v-model="opened"
+      :title="$t('Choose device')"
+    >
+      <VList>
+        <VListItem
+          v-for="device in devices"
+          :key="device"
+          :value="device"
+          :title="device.hostname.toUpperCase()"
+          :subtitle="device.ip"
+        >
+          <template #append>
+            <VBtn
+              density="compact"
+              rounded="pill"
+              icon="mdi-chevron-right"
+              @click="setActiveDevice(device)"
+            />
+          </template>
+        </VListItem>
+      </VList>
+      <template #actions>
+        <VBtn
+          block
+          prepend-icon="mdi-plus"
+          rounded="pill"
+          variant="tonal"
+          :text="$t('Add device')"
+          @click="openAddDevice"
+        />
+      </template>
+    </ModalDialog>
   </VSheet>
 </template>
 

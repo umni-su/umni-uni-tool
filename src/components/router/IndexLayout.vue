@@ -21,6 +21,15 @@ export default {
     hasInputs(){
       return this.$store.getters.hasInputs
     },
+    hasOneWire(){
+      return this.$store.getters.hasOneWire
+    },
+    hasRf433(){
+      return this.$store.getters.hasRf433
+    },
+    hasAi(){
+      return this.$store.getters.hasAi1 || this.$store.getters.hasAi2
+    },
   },
   methods: {
 
@@ -67,6 +76,7 @@ export default {
         {{ $t('Relays and inputs') }}
       </VTab>
       <VTab
+        v-if="hasAi"
         value="analog"
         prepend-icon="mdi-sine-wave"
         :to="{name:'analog'}"
@@ -74,6 +84,7 @@ export default {
         {{ $t('Analog sensors') }}
       </VTab>
       <VTab
+        v-if="hasRf433"
         value="rf"
         prepend-icon="mdi-access-point"
         :to="{name:'rf_panel'}"
@@ -81,6 +92,7 @@ export default {
         {{ $t('Radio channel') }}
       </VTab>
       <VTab
+        v-if="hasOneWire"
         value="1wire"
         prepend-icon="mdi-network"
         :to="{name:'one_wire_panel'}"

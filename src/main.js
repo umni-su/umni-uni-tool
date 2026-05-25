@@ -54,6 +54,12 @@ const vuetify = createVuetify({
         rounded: 0
       }
     },
+    VSparkline:{
+      type: 'trend',
+      lineWidth: 2,
+      autoDraw: true,
+      smooth:true
+    },
     VSelect: {
       variant: 'outlined',
       hideDetails: true,

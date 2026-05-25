@@ -14,19 +14,21 @@
         </VCardText>
 
         <VCardActions>
-          <VSpacer />
-
           <VBtn
+            variant="tonal"
+            color="secondary"
+            :prepend-icon="cancelIcon"
+            :text="cancelText"
+            @click="_cancel(isActive)"
+          />
+          <VSpacer />
+          <VBtn
+            variant="tonal"
             :disabled="disabled"
             :prepend-icon="okIcon"
             :color="okColor"
             :text="okText"
             @click="_confirm(isActive)"
-          />
-          <VBtn
-            :prepend-icon="cancelIcon"
-            :text="cancelText"
-            @click="_cancel(isActive)"
           />
         </VCardActions>
       </VCard>

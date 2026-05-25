@@ -1,5 +1,44 @@
 import {storage as deviceStorage} from "@/store/devices/device_store.js";
 export default {
+  info(state, text) {
+    const notification = {
+      style: 'info',
+      timeout: 2000,
+      active: true,
+      text
+    }
+    state.appNotifications.push(notification)
+  },
+  success(state, text) {
+    const notification = {
+      style: 'success',
+      timeout: 2000,
+      active: true,
+      text
+    }
+    state.appNotifications.push(notification)
+  },
+  error(state, text) {
+    const notification = {
+      style: 'error',
+      timeout: 2000,
+      active: true,
+      text
+    }
+    state.appNotifications.push(notification)
+  },
+  warning(state, text) {
+    const notification = {
+      style: 'warning',
+      timeout: 2000,
+      active: true,
+      text
+    }
+    state.appNotifications.push(notification)
+  },
+  removeAppNotification(state) {
+    state.appNotifications = state.appNotifications.filter(n => n.active === true)
+  },
   // UI mutations
   setTheme(state, theme) {
     localStorage.setItem('theme', theme)
@@ -16,6 +55,9 @@ export default {
   },
   setVersion(state, version) {
     state.version = version
+  },
+  setReboot(state, reboot) {
+    state.reboot = reboot
   },
   setAddDevice(state, addDevice) {
     state.addDevice = addDevice
@@ -107,6 +149,10 @@ export default {
 
   setState(state, {key, value, history}) {
     state.state.sensorData[key] = {value, history}
+  },
+
+  setDeviceConfiguration(state, deviceConfiguration) {
+    state.deviceConfiguration = deviceConfiguration
   },
 
   // Charts

@@ -364,40 +364,48 @@ export default {
     }
   },
 
-  /** ЗАГРУЗКА ВСЕХ ДАННЫХ **/
-  async loadAllData({ dispatch, state }) {
-    const capabilities = state.state.info?.capabilities || []
-
-    // Всегда загружаем systeminfo
-    await dispatch('getSystemInfo')
-
-    // Загружаем конфигурации в зависимости от capabilities
-    if (state.hasAi1 || state.hasAi2) {
-      await dispatch('getAdcConf')
+  async getDeviceConfiguration({state, commit}){
+    const data = await secureApiRequest(
+      'GET',
+      `http://${state.activeDevice.ip}${API}configuration`,
+      null,
+      commit
+    )
+    commit('setLoading', false)
+    if (data?.success) {
+      commit('setDeviceConfiguration', data.data)
+      return data
     }
-
-    if (state.hasNtc1 || state.hasNtc2) {
-      await dispatch('getNtcConf')
-    }
-
-    if (capabilities.includes('outputs') || capabilities.includes('inputs')) {
-      await dispatch('getDioConf')
-    }
-
-    if (capabilities.includes('onewire')) {
-      await dispatch('getOneWireConf')
-    }
-
-    if (capabilities.includes('rf433')) {
-      await dispatch('getRf433Conf')
-    }
-
-    if (capabilities.includes('opentherm')) {
-      await dispatch('getOpenThermState')
-    }
+    return null
   },
 
-  resetCharts({ commit }) {
-    commit('resetCharts')
-  }
+  async saveDeviceConfiguration({state, commit}, configuration){
+    const data = await secureApiRequest(
+      'POST',
+      `http://${state.activeDevice.ip}${API}configuration`,
+      configuration,
+      commit
+    )
+    commit('setLoading', false)
+    if (data?.success) {
+      commit('setDeviceConfiguration', configuration)
+      return data
+    }
+    return null
+  },
+
+  async rebootDevice({state, commit}){
+    const data = await secureApiRequest(
+      'GET',
+      `http://${state.activeDevice.ip}${API}reboot`,
+      null,
+      commit
+    )
+    commit('setLoading', false)
+    commit('setReboot', true)
+    if (data?.success) {
+      return data
+    }
+    return null
+  },
 }

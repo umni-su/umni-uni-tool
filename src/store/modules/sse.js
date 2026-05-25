@@ -1,5 +1,6 @@
 import {storage} from "@/store/devices/device_store.js";
-import state from "@/store/state.js";
+import {invoke} from "@tauri-apps/api/core";
+import {listen} from "@tauri-apps/api/event";
 
 const sseModule = {
   state: {
@@ -7,7 +8,9 @@ const sseModule = {
     isConnected: false,
     error: null,
     eventSource: null,
-    maxMessages: 1000
+    maxMessages: 1000,
+    connectionUnListen: null,
+    dataUnListen: null,
   },
   getters: {
     recentMessages: (state) => (count = 50) => {
@@ -44,47 +47,64 @@ const sseModule = {
     }
   },
   actions: {
-    async initSSE({ commit, dispatch }) {
+    async initSSE({ commit, dispatch, state }) {
+
       const activeDevice = await storage.getActiveDevice()
       const url =  `http://${activeDevice.ip}/sse/events`
-      const eventSource = new EventSource(url);
+      //const eventSource = new EventSource(url);
 
-      eventSource.onopen = () => {
-        commit('setConnected', true);
-        commit('setError', null);
-        console.log('sse opened', url)
-      };
+      await invoke('stop_sse_stream')
+      setTimeout(async() => {
+        await invoke('start_sse_stream', {url})
+      }, 400)
 
-      eventSource.addEventListener('sensor', (event) => {
-        try {
-          const sensorData = JSON.parse(event.data);
-          commit('addMessage', sensorData);
-        } catch (error) {
-          console.error('Error parsing sensor data:', error);
+      state.connectionUnListen = await listen('sse-status', data=>{
+        commit('setConnected', data?.payload === 'connected')
+      })
+
+      state.dataUnListen = await listen('sse-data', data=>{
+        console.log(data)
+        const payload = data?.payload
+        if(payload?.data){
+          commit('addMessage', payload.data)
         }
-      });
+      })
 
-      eventSource.onerror = (error) => {
-        commit('setConnected', false);
-        commit('setError', 'Ошибка соединения SSE');
-        console.error('SSE error:', error);
-
-        if (eventSource.readyState === EventSource.CLOSED) {
-          setTimeout(() => {
-            dispatch('initSSE');
-          }, 5000);
-        }
-      };
-
-      // Сохраняем в хранилище для возможности закрытия
-      commit('setEventSource', eventSource);
+      // eventSource.onopen = () => {
+      //   commit('setConnected', true);
+      //   commit('setError', null);
+      //   console.log('sse opened', url)
+      // };
+      //
+      // eventSource.addEventListener('sensor', (event) => {
+      //   try {
+      //     const sensorData = JSON.parse(event.data);
+      //     commit('addMessage', sensorData);
+      //   } catch (error) {
+      //     console.error('Error parsing sensor data:', error);
+      //   }
+      // });
+      //
+      // eventSource.onerror = (error) => {
+      //   commit('setConnected', false);
+      //   commit('setError', 'Ошибка соединения SSE');
+      //   console.error('SSE error:', error);
+      //
+      //   if (eventSource.readyState === EventSource.CLOSED) {
+      //     setTimeout(() => {
+      //       dispatch('initSSE');
+      //     }, 5000);
+      //   }
+      // };
+      //
+      // // Сохраняем в хранилище для возможности закрытия
+      // commit('setEventSource', eventSource);
     },
-    closeSSE({ state, commit }) {
-      if (state.eventSource) {
-        commit('clearMessages');
-        state.eventSource.close();
-        commit('setConnected', false);
-      }
+    async closeSSE({ state, commit }) {
+      commit('setConnected', false)
+      await invoke('stop_sse_stream')
+      if(state.connectionUnListen) state.connectionUnListen()
+      if(state.dataUnListen) state.dataUnListen()
     }
   }
 };

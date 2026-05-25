@@ -76,7 +76,7 @@ export default {
       </VListSubheader>
       <VListItem
         prepend-icon="mdi-cog"
-        :to="{name:'settings'}"
+        :to="{name: 'settings'}"
         :title="$t('Settings')"
       />
       <DebugSwitcher

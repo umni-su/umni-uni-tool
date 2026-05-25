@@ -17,6 +17,9 @@ export default {
     hostname() {
       return this.$store.getters['getHostname'].toUpperCase()
     },
+    title() {
+      return this.sysinfo?.title
+    },
     capabilities(){
       return this.$store.getters['getCapabilities']
     },
@@ -43,6 +46,12 @@ export default {
     <VCardText class="datetime">
       <div class="text-headline-medium font-weight-black">
         {{ hostname }}
+      </div>
+      <div
+        v-if="title"
+        class="text-headline-small"
+      >
+        {{ title }}
       </div>
       <div class="text-body-small mt-1">
         {{ $t('Allowed capabilities') }}
