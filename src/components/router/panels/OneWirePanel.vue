@@ -23,7 +23,7 @@ export default {
       })
     },
     lastMessage(){
-      return this.$store.getters['lastMessage']
+      return this.$store.getters['lastMessagePayload']
     },
   },
   watch: {

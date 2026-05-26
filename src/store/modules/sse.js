@@ -19,6 +19,10 @@ const sseModule = {
     lastMessage: state => {
       if (state.messages.length === 0) return null;
       return state.messages[state.messages.length - 1];
+    },
+    lastMessagePayload: state => {
+      if (state.messages.length === 0) return null;
+      return state.messages[state.messages.length - 1]?.data
     }
   },
   mutations: {
@@ -47,7 +51,7 @@ const sseModule = {
     }
   },
   actions: {
-    async initSSE({ commit, dispatch, state }) {
+    async initSSE({ commit, state }) {
 
       const activeDevice = await storage.getActiveDevice()
       const url =  `http://${activeDevice.ip}/sse/events`
@@ -63,10 +67,9 @@ const sseModule = {
       })
 
       state.dataUnListen = await listen('sse-data', data=>{
-        console.log(data)
         const payload = data?.payload
         if(payload?.data){
-          commit('addMessage', payload.data)
+          commit('addMessage', payload)
         }
       })
 

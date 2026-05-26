@@ -191,7 +191,7 @@ export default {
       commit('setLoading', false)
 
       if (data?.success) {
-        commit('setRf433Conf', data.data)
+        commit('setRf433Conf', data.data?.devices)
       }
       return data
     } catch (error) {
@@ -404,6 +404,21 @@ export default {
     commit('setLoading', false)
     commit('setReboot', true)
     if (data?.success) {
+      return data
+    }
+    return null
+  },
+
+  async setScanModeRf433({state, commit}, mode){
+    const data = await secureApiRequest(
+      'POST',
+      `http://${state.activeDevice.ip}${API}rf/scan`,
+      {mode},
+      commit
+    )
+    commit('setLoading', false)
+    if (data?.success) {
+      commit('setScanModeRf433', mode)
       return data
     }
     return null

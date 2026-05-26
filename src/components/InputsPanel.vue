@@ -10,13 +10,14 @@ export default {
       return this.$store.getters['getInputs']
     },
     lastMessage(){
-      return this.$store.getters['lastMessage'];
+      return this.$store.getters['lastMessagePayload'];
     }
   },
   watch: {
     lastMessage:{
       deep: true,
       handler(v){
+        console.log(v)
         if(v.data.capability === 'inputs'){
           try {
             const index = parseInt(v.data.identifier.replace('inp',''));

@@ -1,50 +1,78 @@
 <script>
 import RfSensorItem from "@/components/chunks/RfSensorItem.vue";
 import RfSensorTypeSelect from "@/components/chunks/RfSensorTypeSelect.vue";
+import ModalDialog from "@/components/chunks/ModalDialog.vue";
+import RfSensorState from "@/components/chunks/RfSensorState.vue";
 
 export default {
   name: "RfPanel",
-  components: {RfSensorTypeSelect, RfSensorItem},
+  components: {RfSensorState, ModalDialog, RfSensorTypeSelect, RfSensorItem},
   data() {
     return {
-      filterType: null,
-      handler: null,
+      message: null,
+      founded: false,
+      scanHandler: null,
+      totalScanSeconds: 15,
+      showScan: false,
+      scanList: []
     }
   },
   computed: {
     state() {
-      return this.$store.getters['getRfState']
+      return this.$store.getters['getRf433Conf']
     },
-    interval() {
-      return this.$store.getters['getRefreshInterval']
+    lastMessage() {
+      return this.$store.getters['lastMessage']
     },
-    sensors() {
-      return this.filterType > 0 ? this.state.filter(s => s.type === this.filterType) : this.state
+    progress(){
+      return this.totalScanSeconds * 100 / 15
     }
   },
   watch: {
-    async interval() {
-      clearInterval(this.handler)
-      await this.getState()
-      this.handler = setInterval(async () => {
-        await this.getState()
-      }, this.interval)
+    lastMessage:{
+      deep: true,
+      handler(v) {
+        if(v?.data?.event === "rf433_scan"){
+          const existing = this.scanList.findIndex(d=>{
+            return d.identifier === v.data.data.identifier
+          })
+          if(existing > -1){
+            this.scanList[existing] = v.data.data
+          } else {
+            this.scanList.push(v.data.data)
+          }
+        }
+      }
     }
   },
-  async mounted() {
+  async created() {
     await this.getState()
-    this.handler = setInterval(async () => {
-      await this.getState()
-    }, this.interval)
-
   },
   unmounted() {
-    clearInterval(this.handler)
   },
   methods: {
     async getState() {
       await this.$store.dispatch('getRf433Conf')
-      //this.sensors = this.state
+    },
+    addSensor(sensor){
+      this.$store.commit('addRf433Sensor', sensor)
+    },
+    async scanRfSensors(){
+      this.scanList = []
+      this.showScan = true
+      const res = await this.$store.dispatch('setScanModeRf433', true)
+      if(res){
+        this.scanHandler = setInterval(() => {
+          if(this.totalScanSeconds === 0){
+            clearInterval(this.scanHandler)
+            this.scanHandler = null
+            this.totalScanSeconds = 15
+          } else {
+            this.totalScanSeconds --
+          }
+
+        },1000)
+      }
     }
   }
 }
@@ -58,8 +86,7 @@ export default {
     <VSheet
       v-if="state && state.length > 0"
       height="100%"
-      class="index-panel pa-6"
-      color="transparent"
+      class="elevation-2 pa-4"
     >
       <VContainer>
         <VRow>
@@ -67,13 +94,12 @@ export default {
             <RfSensorTypeSelect
               prepend-icon="mdi-filter"
               width="300"
-              @update:model-value="filterType=$event"
             />
           </VCol>
         </VRow>
         <VRow>
           <VCol
-            v-for="sensor in sensors"
+            v-for="sensor in state"
             :key="sensor.serial"
             cols="12"
             md="4"
@@ -101,10 +127,71 @@ export default {
           color="primary"
           prepend-icon="mdi-plus"
           :text="$t('Add wireless sensor')"
-          @click="$router.push({name:'settings_rf'})"
+          @click="scanRfSensors"
         />
       </template>
     </VEmptyState>
+    <ModalDialog
+      v-model="showScan"
+      :title="$t('Scan devices')"
+    >
+      <VEmptyState v-if="scanHandler">
+        <template #text>
+          <div class="opacity-50 mt-4">
+            {{ $t('Make the sensor triggers, then press the scan button') }}
+          </div>
+          <VDivider class="my-4" />
+        </template>
+        <template #media>
+          <VProgressCircular
+            :model-value="progress"
+            :size="64"
+            color="primary"
+          >
+            <template #default>
+              {{ totalScanSeconds }}
+            </template>
+          </VProgressCircular>
+        </template>
+      </VEmptyState>
+      <VSheet v-if="scanList.length > 0">
+        <VList>
+          <VListItem
+            v-for="sensor in scanList"
+            :key="sensor"
+          >
+            <VListItemSubtitle>
+              {{ $moment(sensor.timestamp).fromNow() }}
+            </VListItemSubtitle>
+            <VListItemTitle>{{ sensor.serial }}</VListItemTitle>
+            <template #append>
+              <RfSensorState :state="sensor.value" />
+              <VBtn
+                class="ml-2"
+                density="comfortable"
+                color="default"
+                rounded="pill"
+                icon="mdi-plus"
+                variant="text"
+                @click="addSensor(sensor)"
+              />
+            </template>
+          </VListItem>
+        </VList>
+      </VSheet>
+      <template #actions>
+        <VSheet class="w-100 text-center">
+          <VBtn
+            :disabled="scanHandler !== null"
+            :loading="scanHandler !== null"
+            color="primary"
+            prepend-icon="mdi-sync"
+            :text="$t('Scan')"
+            @click="scanRfSensors"
+          />
+        </VSheet>
+      </template>
+    </ModalDialog>
   </VWindowItem>
 </template>
 

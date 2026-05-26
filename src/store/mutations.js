@@ -131,6 +131,36 @@ export default {
   setRf433Conf(state, rf433) {
     state.state.conf.rf433 = rf433
   },
+  addRf433Sensor(state, sensor) {
+    if (state.state.conf.rf433) {
+      const existing = state.state.conf.rf433.findIndex(d => d.serial === sensor.serial)
+      if (existing === -1) {
+        state.state.conf.rf433.push(
+          {
+            ...sensor,
+            ...{
+              type: 20,
+              new: true,
+              label: null,
+              alarm:false
+            }
+          })
+      }
+    }
+  },
+
+  updateRf433Sensor(state, sensor) {
+    if(state.state.conf.rf433){
+      const existing = state.state.conf.rf433.findIndex(d=>d.serial === sensor.serial)
+      if(existing > -1){
+        state.state.conf.rf433[existing] = {
+          ...state.state.conf.rf433[existing],
+          ...sensor
+        }
+      }
+    }
+  },
+
 
   setOutputs(state, outputs) {
     state.state.conf.outputs = outputs
@@ -264,19 +294,7 @@ export default {
     }
   },
 
-  resetCharts(state) {
-    state.charts = {
-      time: [],
-      adc1: [],
-      adc2: [],
-      ntc1: [],
-      ntc2: [],
-      timeOw: [],
-      ow: [],
-      opentherm: {
-        modulation: [],
-        temperature: []
-      }
-    }
-  }
+  setScanModeRf433(state, mode){
+    state.scanModeRf433 = mode
+  },
 }

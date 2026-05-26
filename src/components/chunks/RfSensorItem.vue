@@ -1,10 +1,21 @@
 <script>
+import RfSensorState from "@/components/chunks/RfSensorState.vue";
+import ModalDialog from "@/components/chunks/ModalDialog.vue";
+import RfSensorTypeSelect from "@/components/chunks/RfSensorTypeSelect.vue";
+
 export default {
   name: "RfSensorItem",
+  components: {RfSensorTypeSelect, ModalDialog, RfSensorState},
   props: {
     sensor: {
       type: Object,
       required: true
+    }
+  },
+  data(){
+    return {
+      showEdit: false,
+      sensorCopy: null
     }
   },
   computed: {
@@ -45,15 +56,19 @@ export default {
     }
   },
   methods: {
-    bit(i) {
-      return 0x01 & (this.sensor.state >> i)
-    },
+    openEdit(){
+      this.showEdit = true
+      this.sensorCopy = this.sensor
+    }
   }
 }
 </script>
 
 <template>
-  <VCard hover>
+  <VCard
+    hover
+    @click="openEdit"
+  >
     <template #append>
       <VBtn
         readonly
@@ -65,6 +80,7 @@ export default {
       <VTooltip hover>
         <template #activator="{props}">
           <VBtn
+            v-if="!sensor.new"
             v-bind="props"
             density="compact"
             variant="text"
@@ -76,22 +92,38 @@ export default {
       </VTooltip>
     </template>
     <template #title>
-      {{ sensor.label }}
+      <VChip
+        :text="$t('Unsaved')"
+        size="small"
+        color="yellow-darken-2"
+        rounded="pill"
+      />{{ sensor.label }}
     </template>
     <template #subtitle>
       {{ typeString }}
     </template>
     <template #text>
-      <VBtn
-        v-for="num in [3,2,1,0]"
-        :key="num"
-        variant="text"
-        :icon="bit(num) === 1 ? 'mdi-toggle-switch-variant' : 'mdi-toggle-switch-variant-off'"
-        density="compact"
-        class="ma-1"
-        readonly
-        :color="bit(num) === 1 ? 'primary' : 'secondary'"
-      />
+      <RfSensorState :state="sensor.value" />
+      <ModalDialog
+        v-model="showEdit"
+        :title="sensor.serial"
+      >
+        <VTextField
+          v-model="sensorCopy.label"
+          :label="$t('Name')"
+        />
+        <RfSensorTypeSelect
+          v-model="sensorCopy.type"
+          class="mt-4"
+        />
+        <template #actions>
+          <VBtn
+            :text="$t('Save')"
+            prepend-icon="mdi-content-save"
+          />
+        </template>
+        {{ sensor }}
+      </ModalDialog>
     </template>
     <template #actions>
       <VBtn

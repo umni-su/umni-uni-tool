@@ -12,6 +12,7 @@ export default {
   deviceRequestError: false,
   deviceConfiguration: null,
   reboot: false,
+  scanRf433: false,
 
   state: {
     info: null,           // /api/systeminfo

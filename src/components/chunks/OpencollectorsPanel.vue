@@ -10,7 +10,7 @@ export default {
       return this.$store.getters['getOpenCollectors']
     },
     lastMessage(){
-      return this.$store.getters['lastMessage'];
+      return this.$store.getters['lastMessagePayload'];
     }
   },
   watch:{
