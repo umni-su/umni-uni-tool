@@ -12,6 +12,7 @@ export default {
       required: true
     }
   },
+  emits: ['on-sensor-saved'],
   data(){
     return {
       showEdit: false,
@@ -19,6 +20,9 @@ export default {
     }
   },
   computed: {
+    lastMessage(){
+      return this.$store.getters['lastMessage']
+    },
     // 1 - movement sensor
     // 2 - door sensor
     // 3 - water leak sensor
@@ -55,10 +59,46 @@ export default {
       }
     }
   },
+  watch:{
+    lastMessage: {
+      deep: true,
+      handler(v) {
+        if(v?.data?.data.capability === 'rf433'){
+          const newState = v?.data?.data?.value ?? 0
+          this.$store.commit('addRf433Sensor', {
+            serial: v?.data?.data?.serial ,
+            value: newState
+          })
+        }
+      }
+    }
+  },
   methods: {
     openEdit(){
       this.showEdit = true
       this.sensorCopy = this.sensor
+    },
+    async saveSensor(){
+      const res = await this.$store.dispatch('saveSetting' ,{
+        setting: 'rf433',
+        values:{
+          serial:parseInt(this.sensor.serial, 16),
+          label:this.sensor.label,
+          type:this.sensor.type,
+          alarm:this.sensor.alarm
+        }
+      })
+      if(res){
+        this.$emit('on-sensor-saved', this.sensor)
+        this.$store.commit('addRf433Sensor', {
+          serial:this.sensor.serial,
+          label:this.sensor.label,
+          type:this.sensor.type,
+          alarm:this.sensor.alarm,
+          value:this.sensor.value,
+        })
+        this.$store.commit('success', this.$t('Saved'))
+      }
     }
   }
 }
@@ -77,22 +117,18 @@ export default {
         color="secondary"
         :icon="icon"
       />
-      <VTooltip hover>
-        <template #activator="{props}">
-          <VBtn
-            v-if="!sensor.new"
-            v-bind="props"
-            density="compact"
-            variant="text"
-            :icon="sensor.alarm ? 'mdi-bell' : 'mdi-bell-off'"
-            :color="sensor.alarm ? 'orange' : 'secondary'"
-          />
-        </template>
-        {{ sensor.alarm ? $t('Alarm mode is activated') : $t('Alarm mode is disabled') }}
-      </VTooltip>
+
+      <VBtn
+        v-if="!sensor.new"
+        density="compact"
+        variant="text"
+        :icon="sensor.alarm ? 'mdi-bell' : 'mdi-bell-off'"
+        :color="sensor.alarm ? 'orange' : 'secondary'"
+      />
     </template>
     <template #title>
       <VChip
+        v-if="sensor.new"
         :text="$t('Unsaved')"
         size="small"
         color="yellow-darken-2"
@@ -100,7 +136,18 @@ export default {
       />{{ sensor.label }}
     </template>
     <template #subtitle>
-      {{ typeString }}
+      <div>
+        {{ typeString }}
+      </div>
+      <VBtn
+        readonly
+        size="small"
+        rounded="pill"
+        variant="tonal"
+        density="compact"
+        class="mr-2"
+        :text="sensor.serial.toString(16)"
+      />
     </template>
     <template #text>
       <RfSensorState :state="sensor.value" />
@@ -116,24 +163,19 @@ export default {
           v-model="sensorCopy.type"
           class="mt-4"
         />
+        <VSwitch
+          v-model="sensorCopy.alarm"
+          color="primary"
+          :label="$t('Alarm mode')"
+        />
         <template #actions>
           <VBtn
             :text="$t('Save')"
             prepend-icon="mdi-content-save"
+            @click="saveSensor"
           />
         </template>
-        {{ sensor }}
       </ModalDialog>
-    </template>
-    <template #actions>
-      <VBtn
-        readonly
-        variant="tonal"
-        class="pa-0"
-        density="compact"
-        width="100%"
-        :text="sensor.serial.toString(16)"
-      />
     </template>
   </VCard>
 </template>

@@ -1,12 +1,15 @@
 <script>
 
 import HistoryChartItem from "@/components/chunks/HistoryChartItem.vue";
+import ModalDialog from "@/components/chunks/ModalDialog.vue";
 
 export default {
   name: "OneWirePanel",
-  components: {HistoryChartItem},
+  components: {ModalDialog, HistoryChartItem},
   data() {
     return {
+      edit: false,
+      sensor: false,
       mode: 'onewire',
       handler: null,
       state: []
@@ -49,6 +52,10 @@ export default {
     await this.getState()
   },
   methods: {
+    openEdit(v){
+      this.sensor = v
+      this.edit = true
+    },
     async getState(){
       const res = await this.$store.dispatch('getState',this.mode)
       if(res?.success){
@@ -57,6 +64,21 @@ export default {
     },
     async getConf(){
       await this.$store.dispatch('getOneWireConf')
+    },
+    async saveSensor(){
+      try {
+        const res = await this.$store.dispatch('saveSetting',{
+          setting: this.mode,
+          values: this.sensor,
+        })
+        if(res){
+          this.edit = false
+          this.$store.commit('success', this.$t('Saved'))
+          this.sensor = null
+        }
+      } catch (error) {
+        this.$store.commit('error', error.message)
+      }
     }
   }
 }
@@ -98,6 +120,7 @@ export default {
                       variant="tonal"
                       rounded="pill"
                       density="comfortable"
+                      @click="openEdit(item)"
                     />
                   </template>
                 </HistoryChartItem>
@@ -107,6 +130,45 @@ export default {
         </VSheet>
       </template>
     </VCard>
+    <ModalDialog
+      v-model="edit"
+      :title="sensor?.label"
+    >
+      <VForm v-if="sensor">
+        <VTextField
+          v-model="sensor.label"
+          :label="$t('Name')"
+          class="mb-4"
+        />
+        <VSlider
+          v-model="sensor.calibration"
+          color="primary"
+          class="mb-4"
+          :label="$t('Calibration')"
+          :min="-10"
+          :max="10"
+          :step="0.1"
+        >
+          <template #append>
+            {{ sensor.calibration }}
+          </template>
+        </VSlider>
+        <VSwitch
+          v-model="sensor.active"
+          color="primary"
+          :true-value="true"
+          :false-value="false"
+          :label="$t('Active')"
+        />
+      </VForm>
+      <template #actions>
+        <VBtn
+          :text="$t('Save')"
+          prepend-icon="mdi-content-save"
+          @click="saveSensor"
+        />
+      </template>
+    </ModalDialog>
   </vwindowitem>
 </template>
 

@@ -131,6 +131,12 @@ export default {
   setRf433Conf(state, rf433) {
     state.state.conf.rf433 = rf433
   },
+  updateRf433Value(state, {serial,value}) {
+    const existing = state.state.conf.rf433.findIndex(d => d.serial === serial)
+    if (existing) {
+      state.state.conf.rf433[existing].value = value
+    }
+  },
   addRf433Sensor(state, sensor) {
     if (state.state.conf.rf433) {
       const existing = state.state.conf.rf433.findIndex(d => d.serial === sensor.serial)
@@ -145,6 +151,11 @@ export default {
               alarm:false
             }
           })
+      } else {
+        state.state.conf.rf433[existing] = {
+          ...state.state.conf.rf433[existing],
+          ...sensor
+        }
       }
     }
   },

@@ -88,12 +88,18 @@ export default {
       height="100%"
       class="elevation-2 pa-4"
     >
-      <VContainer>
+      <VContainer class="pa-0">
         <VRow>
           <VCol>
-            <RfSensorTypeSelect
-              prepend-icon="mdi-filter"
-              width="300"
+            <!--            <RfSensorTypeSelect-->
+            <!--              prepend-icon="mdi-filter"-->
+            <!--              width="300"-->
+            <!--            />-->
+            <VBtn
+              color="primary"
+              prepend-icon="mdi-plus"
+              :text="$t('Add wireless sensor')"
+              @click="scanRfSensors"
             />
           </VCol>
         </VRow>
