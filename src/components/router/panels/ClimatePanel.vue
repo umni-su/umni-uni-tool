@@ -84,8 +84,14 @@ export default {
     heatCurveWriteFeature(){
       return this.supportedFeatures?.heat_curve_write
     },
+    modulationLevel(){
+      return this.state?.modulation
+    },
+    outsideTemperature(){
+      return this.state?.outside_temperature
+    },
     modulatingFeature(){
-      return this.supportedFeatures?.modulating
+      return this.supportedFeatures?.modulating || this.modulationReadFeature || this.modulationWriteFeature
     },
     modulationReadFeature(){
       return this.supportedFeatures?.modulation_read
@@ -123,6 +129,9 @@ export default {
     dhwEnabled(){
       return this.state.dhw_en
     },
+    otcEnabled(){
+      return this.state.otc_en
+    },
     dhwActive(){
       return this.state.dhw_active
     },
@@ -156,6 +165,7 @@ export default {
     this.values.ch_sp = this.chSetpoint
     this.values.ch_en = this.chEnabled
     this.values.dhw_en = this.dhwEnabled
+    this.values.otc_en = this.otcEnabled
     this.values.en = this.enabled
     this.values.mod = this.state?.mod
     this.dbFn = debounce(this.onValuesChanged, 800)
@@ -245,6 +255,22 @@ export default {
                     {{ pumpControlAllowed }}
                   </template>
                 </VListItem>
+                <VListItem
+                  v-if="modulationReadFeature"
+                  :subtitle="$t('Modulation')"
+                >
+                  <template #append>
+                    {{ modulationLevel }}
+                  </template>
+                </VListItem>
+                <VListItem
+                  v-if="outsideTemperatureFeature"
+                  :subtitle="$t('Outside temperature')"
+                >
+                  <template #append>
+                    {{ outsideTemperature }}
+                  </template>
+                </VListItem>
               </VList>
             </template>
             <template #actions>
@@ -263,12 +289,22 @@ export default {
           sm="6"
         >
           <VCard class="fill-height">
-            <VCardTitle>
+            <template #title>
               {{ $t('Boiler information') }}
               <div class="text-body-small text-secondary">
                 {{ $t('Available features') }}
               </div>
-            </VCardTitle>
+            </template>
+
+            <template #append>
+              <VBtn
+                v-tooltip="flameOn? $t('The flame is on') : $t('The flame is off')"
+                variant="tonal"
+                rounded="pill"
+                :color="flameOn ? 'orange' : 'default'"
+                :icon="flameOn ? 'mdi-fire' : 'mdi-fire-off'"
+              />
+            </template>
 
             <VCardText class="mx-n1">
               <VSwitch
@@ -279,6 +315,7 @@ export default {
                 :false-value="false"
                 :label="values.en ? $t('Disable') : $t('Enable')"
               />
+
               <FeatureCard
                 :title="$t('Domestic hot water')"
                 :enabled="dhwFeature"
@@ -302,6 +339,12 @@ export default {
               <FeatureCard
                 :title="$t('Return temperature')"
                 :enabled="returnTemperatureFeature"
+              />
+              <VSwitch
+                v-model="values.otc_en"
+                class="mt-4"
+                color="primary"
+                :label="$t('Outside temperature compensation')"
               />
             </VCardText>
           </VCard>

@@ -80,7 +80,33 @@ export default {
     return state.activeDevice?.title || null
   },
   getCapabilities(state) {
-    return state.state.info?.capabilities || []
+    const caps = state.state.info?.capabilities || []
+    return caps.sort()
+  },
+  getAutomationsCapabilities(state) {
+    const caps = state.state.info?.capabilities || []
+    const filteredCaps = caps.filter(cap =>
+      cap !== 'ai' &&
+      cap !== 'ethernet' &&
+      cap !== 'wifi' &&
+      cap !== 'inputs' &&
+      cap !== 'outputs' &&
+      cap !== 'webserver' &&
+      cap !== 'webhooks' &&
+      cap !== 'opencollectors'
+    )
+    return filteredCaps.sort()
+  },
+  getAutomationsSwitchCapabilities(state, getters) {
+    const caps = getters['getAutomationsCapabilities']
+    const filteredCaps = caps.filter(cap =>
+      (cap.startsWith('oc') && cap.length > 2) ||
+      (cap.startsWith('out') && cap.length > 3) ||
+      cap === 'opentherm' ||
+      cap === 'buzzer' ||
+      cap === 'alarm'
+    )
+    return filteredCaps.sort()
   },
   getHeapInfo(state) {
     return state.state.info?.heap || null
@@ -218,5 +244,11 @@ export default {
   },
   getOpenThermCharts(state) {
     return state.charts.opentherm
+  },
+  getAutomations(state){
+    return state.automations
+  },
+  getActiveAutomation(state){
+    return state.activeAutomation
   }
 }

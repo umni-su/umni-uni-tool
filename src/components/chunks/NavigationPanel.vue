@@ -75,10 +75,16 @@ export default {
         {{ $t('Advanced') }}
       </VListSubheader>
       <VListItem
+        prepend-icon="mdi-arrow-decision-auto"
+        :title="$t('Automations')"
+        :to="{name: 'automations'}"
+      />
+      <VListItem
         prepend-icon="mdi-cog"
         :to="{name: 'settings'}"
         :title="$t('Settings')"
       />
+
       <DebugSwitcher
         as-list-item
       />

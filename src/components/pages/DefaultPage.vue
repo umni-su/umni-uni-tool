@@ -9,11 +9,15 @@ import ModalDialog from "@/components/chunks/ModalDialog.vue";
 import AddDeviceModal from "@/components/AddDeviceModal.vue";
 import NavigationPanel from "@/components/chunks/NavigationPanel.vue";
 import RebootPage from "@/components/pages/RebootPage.vue";
+import DebugSwitcher from "@/components/chunks/DebugSwitcher.vue";
+import {invoke} from "@tauri-apps/api/core";
 
 
 export default {
   name: "DefaultPage",
-  components: {RebootPage, NavigationPanel, AddDeviceModal, ModalDialog, ThemeSwitcher, UmniLogo, AppLoader},
+  components: {
+    DebugSwitcher,
+    RebootPage, NavigationPanel, AddDeviceModal, ModalDialog, ThemeSwitcher, UmniLogo, AppLoader},
   data(){
     return {
       unListen: null,
@@ -27,6 +31,9 @@ export default {
     },
     devices(){
       return this.$store.getters['getDevices']
+    },
+    devicesFromScan(){
+      return this.devices.filter(device => device.fromScan)
     },
     activeDevice(){
       return this.$store.getters['getActiveDevice'];
@@ -63,14 +70,38 @@ export default {
     },
     isReboot(){
       return this.$store.getters['isReboot']
+    },
+    titleText(){
+      return this.title ? `${this.title} (${this.hostname})` : this.hostname
+    },
+    mergedDevices(){
+      const merged = []
+      this.devicesFromScan.map(deviceScan=>{
+        let founded = false
+        this.devices?.map(device => {
+          if(deviceScan.hostname === device.hostname){
+            founded = true
+          }
+          merged.push(device)
+        })
+        if(!founded){
+          //merged.push({...deviceScan,...{merged: false}})
+        }
+      })
+      return merged
     }
   },
   watch:{
     isScanning(v){
       this.opened = v;
     },
-    opened(v){
-      this.$store.commit('setScanMode', v);
+    async opened(v){
+      this.$store.commit('setScanMode', v)
+      try {
+        await invoke('start_mdns_discovery');
+      } catch (err) {
+        console.error("Ошибка mDNS:", err);
+      }
     },
     activeDevice:{
       async handler(val){
@@ -107,14 +138,15 @@ export default {
   async mounted() {
     await this.loadDevices();
     this.unListen = await listen('device-found', (event) => {
-      const [name, hostname, ips, txt] = event.payload;
+      //const [hostname, ips, txt] = event.payload;
+      const [name, hostname, ips, txt] = event.payload
       const ip = ips[0];
       this.$store.commit('saveDevice',{
-        title: name.replace('._umni_api._tcp.local.', ''),
-        name: hostname.replace('.local.', '.local'), // чистим имя
+        name: hostname.replace('.local.', '.local'),
         hostname: hostname.replace('.local.', '.local'),
         ip: ip,
         lastSeen: Date.now(),
+        fromScan:true,
         txt
       })
     });
@@ -140,7 +172,8 @@ export default {
     },
     toggleSidebar(){
       this.$store.commit('setSidebarOpen', !this.isOpen);
-    }
+    },
+
   }
 }
 </script>
@@ -179,13 +212,23 @@ export default {
       <template #title>
         <div
           v-if="hasDevice"
-          class="text-title-medium font-weight-bold"
+          class="text-center"
         >
-          {{ title ?? hostname }}
+          <VBtn
+            :text="titleText"
+            color="default"
+            density="comfortable"
+            variant="tonal"
+            @click="$store.commit('setScanMode', true)"
+          />
         </div>
       </template>
       <template #append>
         <ThemeSwitcher
+          class="mx-2"
+          density="comfortable"
+        />
+        <DebugSwitcher
           class="mx-2"
           density="comfortable"
         />
@@ -256,7 +299,7 @@ export default {
     >
       <VList>
         <VListItem
-          v-for="device in devices"
+          v-for="device in devicesFromScan"
           :key="device"
           :value="device"
           :title="device.hostname.toUpperCase()"

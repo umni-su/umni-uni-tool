@@ -30,10 +30,11 @@ export default {
       await this.getSystemInfo()
     }
   },
-  async created() {
+  async mounted() {
     this.handler = setInterval(async () => {
       await this.getSystemInfo()
     }, this.interval)
+    await this.getSystemInfo()
   },
   unmounted() {
     clearInterval(this.handler)

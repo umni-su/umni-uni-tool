@@ -79,6 +79,14 @@ export default {
       } catch (error) {
         this.$store.commit('error', error.message)
       }
+    },
+    async copySerial(serial){
+      await navigator.clipboard.writeText(serial)
+        .catch( () => {
+          this.$store.commit('error',this.$t('Error'))
+          }
+        )
+        this.$store.commit('success',this.$t('Copied'))
     }
   }
 }
@@ -122,6 +130,22 @@ export default {
                       density="comfortable"
                       @click="openEdit(item)"
                     />
+                  </template>
+                  <template #actions>
+                    <VSheet
+                      width="100%"
+                      class="text-right"
+                    >
+                      <VBtn
+                        variant="plain"
+                        color="default"
+                        size="small"
+                        prepend-icon="mdi-content-copy"
+                        @click="copySerial(item.serial)"
+                      >
+                        {{ item.serial }}
+                      </VBtn>
+                    </VSheet>
                   </template>
                 </HistoryChartItem>
               </VCol>

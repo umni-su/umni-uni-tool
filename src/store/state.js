@@ -1,5 +1,7 @@
 export default {
   appNotifications: [],
+  automations: [],
+  activeAutomation: null,
   theme: localStorage.getItem('theme') !== null ? localStorage.getItem('theme') : 'light',
   loading: false,
   debug: false,

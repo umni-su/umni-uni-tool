@@ -8,6 +8,7 @@ import OneWirePanel from "@/components/router/panels/OneWirePanel.vue";
 import RfPanel from "@/components/router/panels/RfPanel.vue";
 import AnalogSensorsPanel from "@/components/router/panels/AnalogSensorsPanel.vue";
 import DevicesPage from "@/components/router/DevicesPage.vue";
+import AutomationsPage from "@/components/router/AutomationsPage.vue";
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -51,6 +52,11 @@ const router = createRouter({
       path: '/devices',
       component: DevicesPage,
       name: 'devices'
+    },
+    {
+      path: '/automations',
+      name: 'automations',
+      component: AutomationsPage
     },
     {
       path: '/settings',

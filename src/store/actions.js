@@ -6,6 +6,7 @@ const API = '/api/'
 
 async function secureApiRequest(method, url, body = null, commit = null) {
   if(commit){
+    commit('setLoading', true)
     commit('deviceRequestErrorOff')
   }
   try {
@@ -22,6 +23,10 @@ async function secureApiRequest(method, url, body = null, commit = null) {
       commit('deviceRequestErrorOn')
     }
     throw customError
+  } finally {
+    if(commit){
+      commit('setLoading', false)
+    }
   }
 }
 
@@ -33,7 +38,6 @@ export default {
 
     try {
       const data = await secureApiRequest('GET',`http://${state.activeDevice.ip}${API}systeminfo`, null, commit)
-      commit('setLoading', false)
 
       if (data.success) {
         commit('setSystemInfo', data.data)
@@ -52,7 +56,6 @@ export default {
 
     try {
       const data = await secureApiRequest('GET',`http://${ip}${API}systeminfo`, null, commit)
-      commit('setLoading', false)
       return data.data
     } catch (error) {
       commit('setLoading', false)
@@ -104,7 +107,6 @@ export default {
         { section: 'ntc' },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         commit('setNtcConf', data.data)
@@ -134,7 +136,6 @@ export default {
         { section: 'dio' },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         commit('setDioConf', data.data)
@@ -159,7 +160,6 @@ export default {
         { section: 'onewire' },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         const datetime = dateToStringDateTime()
@@ -188,7 +188,6 @@ export default {
         { section: 'rf433' },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         commit('setRf433Conf', data.data?.devices)
@@ -212,7 +211,6 @@ export default {
         { capability },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success && data?.data) {
         commit('setState', {
@@ -241,7 +239,6 @@ export default {
         { capability: 'opentherm' },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         const datetime = dateToStringDateTime()
@@ -270,7 +267,6 @@ export default {
         { section },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         // Используем Vue.set или прямой доступ к объекту
@@ -301,7 +297,6 @@ export default {
         { setting, values },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         return data
@@ -325,7 +320,6 @@ export default {
         { mode, index, level },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         commit('updateRelayState', { index, state: level })
@@ -351,7 +345,6 @@ export default {
         { count, on_ms, off_ms },
         commit
       )
-      commit('setLoading', false)
 
       if (data?.success) {
         return data
@@ -371,7 +364,6 @@ export default {
       null,
       commit
     )
-    commit('setLoading', false)
     if (data?.success) {
       commit('setDeviceConfiguration', data.data)
       return data
@@ -386,7 +378,6 @@ export default {
       configuration,
       commit
     )
-    commit('setLoading', false)
     if (data?.success) {
       commit('setDeviceConfiguration', configuration)
       return data
@@ -416,10 +407,62 @@ export default {
       {mode},
       commit
     )
-    commit('setLoading', false)
     if (data?.success) {
       commit('setScanModeRf433', mode)
       return data
+    }
+    return null
+  },
+
+  /** AUTOMATIONS **/
+  async getAutomations({state, commit}){
+    const data = await secureApiRequest(
+      'GET',
+      `http://${state.activeDevice.ip}${API}automations`,
+      commit
+    )
+    commit('setLoading', false)
+    if (data?.success) {
+      commit('setAutomations', data.data)
+      return data
+    }
+    return null
+  },
+  async addAutomation({state, dispatch, commit}, data){
+    const res = await secureApiRequest(
+      'POST',
+      `http://${state.activeDevice.ip}${API}automations`,
+      data,
+      commit
+    )
+    if (res?.success) {
+      dispatch('getAutomations')
+      return res
+    }
+    return null
+  },
+  async updateAutomation({state, dispatch, commit}, data){
+    const res = await secureApiRequest(
+      'PUT',
+      `http://${state.activeDevice.ip}${API}automations/${data.id}`,
+      data,
+      commit
+    )
+    if (res?.success) {
+      dispatch('getAutomations')
+      return res
+    }
+    return null
+  },
+  async deleteAutomation({state, dispatch, commit}, id){
+    const res = await secureApiRequest(
+      'DELETE',
+      `http://${state.activeDevice.ip}${API}automations/${id}`,
+      commit
+    )
+    if (res?.success) {
+      dispatch('getAutomations')
+      return res
     }
     return null
   },

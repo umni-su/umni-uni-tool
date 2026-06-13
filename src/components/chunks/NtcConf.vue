@@ -4,6 +4,7 @@ import NtcConfCard from "@/components/chunks/NtcConfCard.vue";
 export default {
   name: "NtcConf",
   components: {NtcConfCard},
+
   computed:{
     ntc1() {
       return this.$store.getters.getState('ntc1')

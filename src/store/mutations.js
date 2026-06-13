@@ -1,4 +1,4 @@
-import {storage as deviceStorage} from "@/store/devices/device_store.js";
+import {storage, storage as deviceStorage} from "@/store/devices/device_store.js";
 export default {
   info(state, text) {
     const notification = {
@@ -95,7 +95,6 @@ export default {
       state.devices[index] = {...state.devices[index], ...device}
       await deviceStorage.updateDevice(device.hostname, device)
     }
-
   },
 
   removeDevice(state, device){
@@ -111,8 +110,9 @@ export default {
   },
 
   // /api/systeminfo
-  setSystemInfo(state, info) {
+  async setSystemInfo(state, info) {
     state.state.info = info
+    await storage.updateDevice(`${info.hostname}.local`, {title: info.title})
   },
 
   // /api/conf
@@ -308,4 +308,11 @@ export default {
   setScanModeRf433(state, mode){
     state.scanModeRf433 = mode
   },
+
+  setAutomations(state, automations){
+    state.automations = automations
+  },
+  setActiveAutomation(state, activeAutomation){
+    state.activeAutomation = activeAutomation
+  }
 }

@@ -17,13 +17,14 @@ export default {
     v-if="loading"
     indeterminate
     :theme="theme"
+    color="primary"
     class="loader opacity-50"
   />
 </template>
 
 <style scoped lang="scss">
 .loader {
-  position: absolute;
+  position: fixed;
   bottom: 10px;
   right: 10px;
   z-index: 10;

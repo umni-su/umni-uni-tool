@@ -48,7 +48,6 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
     let request_builder = match method.as_str() {
         "GET" => {
             let mut url = parsed_url;
-
             // Добавляем query параметры к URL для GET
             if let Some(params) = &payload.body {
                 let query_string = serde_qs::to_string(&params).map_err(|e| e.to_string())?;
@@ -57,8 +56,25 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
 
             client.get(url.to_string())
         }
+        "DELETE" => {
+                let mut url = parsed_url;
+                // Добавляем query параметры к URL для GET
+                if let Some(params) = &payload.body {
+                    let query_string = serde_qs::to_string(&params).map_err(|e| e.to_string())?;
+                    url.set_query(Some(&query_string));
+                }
+
+                client.delete(url.to_string())
+         }
         "POST" => {
             let mut builder = client.post(&payload.url);
+            if let Some(body) = payload.body {
+                builder = builder.json(&body);
+            }
+            builder
+        }
+        "PUT" => {
+            let mut builder = client.put(&payload.url);
             if let Some(body) = payload.body {
                 builder = builder.json(&body);
             }

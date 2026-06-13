@@ -56,6 +56,9 @@ export default {
     <template #append>
       <slot name="append" />
     </template>
+    <template #actions>
+      <slot name="actions" />
+    </template>
     <VCardText>
       <VSparkline
         :color="color"
