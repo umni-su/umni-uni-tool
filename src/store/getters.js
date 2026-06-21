@@ -21,6 +21,9 @@ export default {
   isReboot(state) {
     return state.reboot
   },
+  isFlash(state) {
+    return state.flash
+  },
   isSidebarRail(state) {
     return state.sidebarRail
   },

@@ -1,10 +1,10 @@
 <script>
-import InputPort from "@/components/chunks/InputPort.vue";
+import OutputPort from "@/components/chunks/OutputPort.vue";
 import DebugCard from "@/components/chunks/DebugCard.vue";
 
 export default {
   name: "InputsPanel",
-  components: {DebugCard, InputPort},
+  components: {DebugCard, OutputPort},
   computed: {
     inputs(){
       return this.$store.getters['getInputs']
@@ -17,7 +17,6 @@ export default {
     lastMessage:{
       deep: true,
       handler(v){
-        console.log(v)
         if(v.data.capability === 'inputs'){
           try {
             const index = parseInt(v.data.identifier.replace('inp',''));
@@ -35,10 +34,11 @@ export default {
 
 <template>
   <VRow>
-    <InputPort
+    <OutputPort
       v-for="port in inputs"
       :key="port"
       :port="port"
+      capability="inputs"
     />
   </VRow>
   <DebugCard>

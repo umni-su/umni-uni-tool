@@ -88,7 +88,10 @@ export default {
       return this.state?.modulation
     },
     outsideTemperature(){
-      return this.state?.outside_temperature
+      return this.state?.outside_temperature ? parseFloat(this.state?.outside_temperature.toFixed(1)) : null
+    },
+    waterTemperature(){
+      return this.state?.boiler_temperature ? parseFloat(this.state?.boiler_temperature.toFixed(1)) : null
     },
     modulatingFeature(){
       return this.supportedFeatures?.modulating || this.modulationReadFeature || this.modulationWriteFeature
@@ -271,6 +274,13 @@ export default {
                     {{ outsideTemperature }}
                   </template>
                 </VListItem>
+                <VListItem
+                  :subtitle="$t('Water temperature')"
+                >
+                  <template #append>
+                    {{ waterTemperature }}
+                  </template>
+                </VListItem>
               </VList>
             </template>
             <template #actions>
@@ -340,6 +350,34 @@ export default {
                 :title="$t('Return temperature')"
                 :enabled="returnTemperatureFeature"
               />
+
+              <VSheet>
+                <VList>
+                  <VListItem :title="$t('Current mode')">
+                    <template #append>
+                      <VChip
+                        v-if="chActive"
+                        rounded="pill"
+                        color="orange"
+                        :text="$t('Heating')"
+                      />
+                      <VChip
+                        v-else-if="dhwActive"
+                        color="primary"
+                        rounded="pill"
+                        :text="$t('Hot water')"
+                      />
+                      <VChip
+                        v-else
+                        color="ыусщтвфен"
+                        rounded="pill"
+                        :text="$t('Idle')"
+                      />
+                    </template>
+                  </VListItem>
+                </VList>
+              </VSheet>
+
               <VSwitch
                 v-model="values.otc_en"
                 class="mt-4"

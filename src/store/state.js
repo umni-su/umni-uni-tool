@@ -14,6 +14,7 @@ export default {
   deviceRequestError: false,
   deviceConfiguration: null,
   reboot: false,
+  flash: false,
   scanRf433: false,
 
   state: {

@@ -35,10 +35,12 @@ export default {
     },
     onlineDevice:{
       deep: true,
-      handler(device){
+      async handler(device){
         if(device && device?.hostname){
           clearInterval(this.handler)
           this.$store.commit('setReboot', false)
+          this.$store.dispatch('closeSSE')
+          await this.$store.dispatch('initSSE')
         }
       }
     }
@@ -78,9 +80,6 @@ export default {
         indeterminate
       />
     </template>
-    <!--    <template #actions>-->
-    <!--      {{ onlineDevice }}-->
-    <!--    </template>-->
   </VEmptyState>
 </template>
 

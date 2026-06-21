@@ -27,6 +27,7 @@ export default {
     // 2 - door sensor
     // 3 - water leak sensor
     // 4 - buttons (remote controller with buttons)
+    // 5 - smoke
     // 20 - other
     typeString() {
       switch (this.sensor.type) {
@@ -38,6 +39,8 @@ export default {
           return this.$t('Water leak sensor')
         case 4:
           return this.$t('Remote controller')
+        case 5:
+          return this.$t('Smoke sensor')
         default:
           return this.$t('Other')
       }

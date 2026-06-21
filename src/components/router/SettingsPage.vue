@@ -4,10 +4,11 @@ import NetworkModeSelect from "@/components/chunks/NetworkModeSelect.vue";
 import RebootConfirmation from "@/components/RebootConfirmation.vue";
 import IpTypeSelect from "@/components/chunks/IpTypeSelect.vue";
 import {invoke} from "@tauri-apps/api/core";
+import MaintenanceCard from "@/components/chunks/MaintenanceCard.vue";
 
 export default {
   name: "SettingsPage",
-  components: {IpTypeSelect, RebootConfirmation, NetworkModeSelect, DebugCard},
+  components: {MaintenanceCard, IpTypeSelect, RebootConfirmation, NetworkModeSelect, DebugCard},
   data() {
     return {
       tab: 'main',
@@ -250,6 +251,11 @@ export default {
                   value="network"
                   :text="$t('Network')"
                 />
+                <VTab
+                  border="0"
+                  value="maintenance"
+                  :text="$t('Maintenance')"
+                />
               </VTabs>
             </VCol>
 
@@ -400,6 +406,12 @@ export default {
                       :text="$t('Save')"
                       @click="saveSettings('network')"
                     />
+                  </VTabsWindowItem>
+                  <VTabsWindowItem value="maintenance">
+                    <div class="text-title-large mb-4 font-weight-bold">
+                      {{ $t('Maintenance') }}
+                    </div>
+                    <MaintenanceCard class="mt-4" />
                   </VTabsWindowItem>
                 </VTabsWindow>
               </VSheet>

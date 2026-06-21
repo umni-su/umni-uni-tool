@@ -16,7 +16,6 @@ async function secureApiRequest(method, url, body = null, commit = null) {
       payload: {url, method, body}
     })
   } catch (error) {
-    // error здесь — это то, что мы написали в Err(...) в Rust
     const customError = new Error(error)
     console.error(`Secure Request Error [${method}]:`, error)
     if(commit){
@@ -25,6 +24,35 @@ async function secureApiRequest(method, url, body = null, commit = null) {
     throw customError
   } finally {
     if(commit){
+      commit('setLoading', false)
+    }
+  }
+}
+
+async function uploadFirmware(url, file, commit = null) {
+  if (commit) {
+    commit('setLoading', true)
+  }
+
+  try {
+    // 1. Читаем файл в ArrayBuffer
+    const arrayBuffer = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 2. Превращаем в массив байт для Rust Vec<u8>
+    const byteArray = Array.from(new Uint8Array(arrayBuffer));
+
+    // 3. Вызываем нашу новую чистую команду
+    return await invoke('upload_firmware', {
+      url: url,
+      fileBytes: byteArray // В JS пишем в camelCase, Tauri сам сопоставит с file_bytes в Rust
+    });
+  } finally {
+    if (commit) {
       commit('setLoading', false)
     }
   }
@@ -56,6 +84,19 @@ export default {
 
     try {
       const data = await secureApiRequest('GET',`http://${ip}${API}systeminfo`, null, commit)
+      return data.data
+    } catch (error) {
+      commit('setLoading', false)
+      throw error
+    }
+  },
+
+  async flashDevice({ commit, state }, file) {
+    if (state.loading) return false
+    commit('setLoading', true)
+
+    try {
+      const data = await uploadFirmware(`http://${state.activeDevice.ip}${API}ota/update`, file, commit)
       return data.data
     } catch (error) {
       commit('setLoading', false)

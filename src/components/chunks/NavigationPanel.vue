@@ -16,7 +16,15 @@ export default {
     isOpen(){
       return this.$store.getters['isSidebarOpen']
     },
-
+    sysinfo() {
+      return this.$store.getters['getSystemInfo']
+    },
+    fwVer(){
+      return this.sysinfo?.fw_ver
+    },
+    version() {
+      return this.$store.getters['getVersion']
+    }
   },
   watch:{
     isOpen(v){
@@ -100,6 +108,10 @@ export default {
           :text="$t('Scan devices')"
           @click="startScan"
         />
+        <div class="text-body-small opacity-50 mt-4">
+          {{ $t('Application version') }}: {{ version }}<br>
+          {{ $t('Firmware version') }}: {{ fwVer }}
+        </div>
       </VSheet>
     </template>
   </VNavigationDrawer>

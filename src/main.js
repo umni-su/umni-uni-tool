@@ -49,6 +49,13 @@ const vuetify = createVuetify({
       hideDetails: true,
       density: 'compact',
     },
+    VFileInput: {
+      prependIcon: null,
+      prependInnerIcon: 'mdi-paperclip',
+      variant: 'outlined',
+      hideDetails: true,
+      density: 'compact',
+    },
     VList:{
       VListItem: {
         rounded: 0

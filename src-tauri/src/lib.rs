@@ -89,6 +89,36 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
 }
 
 #[tauri::command]
+async fn upload_firmware(url: String, file_bytes: Vec<u8>) -> Result<String, String> {
+    // 1. Проверяем URL на валидность и локальный IP (как в вашем secure_request)
+    let parsed_url = url::Url::parse(&url).map_err(|_| "Invalid URL")?;
+    let host = parsed_url.host_str().ok_or("No host in URL")?;
+
+    if !is_private_ip(host) {
+        return Err(format!("Access Denied: {} is not a local address", host));
+    }
+
+    // 2. Создаем клиент (увеличим таймаут, так как прошивка может весить много и слаться дольше 5 секунд)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // 3. Отправляем бинарные данные напрямую через .body() (аналог --data-binary)
+    let response = client.post(&url)
+        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .body(file_bytes) // Передаем вектор байт напрямую
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 4. Получаем ответ как текст (устройства на прошивку часто отвечают "OK" или отправляют пустой ответ, а не JSON)
+    let res_text = response.text().await.map_err(|e| e.to_string())?;
+
+    Ok(res_text)
+}
+
+#[tauri::command]
 fn start_mdns_discovery(app: tauri::AppHandle) {
     let mdns = ServiceDaemon::new().unwrap();
     let receiver = mdns.browse("_umni_api._tcp.local.").unwrap();
@@ -230,6 +260,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_mdns_discovery,
             secure_request,
+            upload_firmware,
             start_sse_stream,
             stop_sse_stream
         ])

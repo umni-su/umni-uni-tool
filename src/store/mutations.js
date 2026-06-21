@@ -59,6 +59,9 @@ export default {
   setReboot(state, reboot) {
     state.reboot = reboot
   },
+  setFlash(state, reboot) {
+    state.flash = reboot
+  },
   setAddDevice(state, addDevice) {
     state.addDevice = addDevice
   },
@@ -276,12 +279,26 @@ export default {
       const relayIndex = state.state.conf?.outputs.findIndex(
         r => r.index === index
       )
-
       if (relayIndex > -1 && state.state.conf?.outputs[relayIndex]) {
         state.state.conf.outputs[relayIndex].state = relayState
       }
     }
   },
+
+  updateRelay(state, { index, data }) {
+    if (state.state.conf?.outputs) {
+      const relayIndex = state.state.conf?.outputs.findIndex(
+        r => r.index === index
+      )
+      if (relayIndex > -1 && state.state.conf?.outputs[relayIndex]) {
+        state.state.conf.outputs[relayIndex] = {
+          ...state.state.conf.outputs[relayIndex],
+          ...data
+        }
+      }
+    }
+  },
+
   updateInputState(state, { index, state: relayState }) {
     if (state.state.conf?.inputs) {
       const inputIndex = state.state.conf?.inputs.findIndex(
@@ -294,13 +311,26 @@ export default {
     }
   },
   updateOcState(state, { index, state: ocState }) {
-    if (state.state.conf?.inputs) {
+    if (state.state.conf?.opencollectors) {
       const ocIndex = state.state.conf?.opencollectors.findIndex(
         r => r.index === index
       )
 
       if (ocIndex > -1 && state.state.conf?.opencollectors[ocIndex]) {
         state.state.conf.opencollectors[ocIndex].state = ocState
+      }
+    }
+  },
+  updateOc(state, { index, data }) {
+    if (state.state.conf?.opencollectors) {
+      const ocIndex = state.state.conf?.opencollectors.findIndex(
+        r => r.index === index
+      )
+      if (ocIndex > -1 && state.state.conf?.opencollectors[ocIndex]) {
+        state.state.conf.opencollectors[ocIndex] = {
+          ...state.state.conf.opencollectors[ocIndex],
+          ...data
+        }
       }
     }
   },
