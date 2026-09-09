@@ -301,10 +301,27 @@ export default {
         <VListItem
           v-for="device in devicesFromScan"
           :key="device"
+          rounded="lg"
           :value="device"
-          :title="device.hostname.toUpperCase()"
-          :subtitle="device.ip"
         >
+          <template #title>
+            {{ device.title }}
+          </template>
+          <template #subtitle>
+            <VChip
+              rounded="pill"
+              size="small"
+            >
+              {{ device.name.toUpperCase() }}
+            </VChip>
+            <VChip
+              rounded="pill"
+              size="small"
+              class="ml-2"
+            >
+              {{ device.ip }}
+            </VChip>
+          </template>
           <template #append>
             <VBtn
               density="compact"
@@ -316,14 +333,18 @@ export default {
         </VListItem>
       </VList>
       <template #actions>
-        <VBtn
-          block
-          prepend-icon="mdi-plus"
-          rounded="pill"
-          variant="tonal"
-          :text="$t('Add device')"
-          @click="openAddDevice"
-        />
+        <VSheet
+          class="text-center"
+          width="100%"
+        >
+          <VBtn
+            prepend-icon="mdi-plus"
+            rounded="pill"
+            variant="elevated"
+            :text="$t('Add device')"
+            @click="openAddDevice"
+          />
+        </VSheet>
       </template>
     </ModalDialog>
   </VSheet>

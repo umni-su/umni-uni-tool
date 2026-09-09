@@ -19,6 +19,7 @@ export default {
 emits: ['update:model-value'],
   data(){
     return {
+      useHysto: false,
       automation: null,
       baseAction: {
         capability: null,
@@ -31,6 +32,7 @@ emits: ['update:model-value'],
           subtype: null,
           op: null,
           value: null,
+          hysteresis:0,
         },
         then: [],
         else: []
@@ -93,6 +95,11 @@ emits: ['update:model-value'],
     },
     modelValue(v){
       this.open = v
+    },
+    useHysto(v){
+      if(!v){
+        this.automation.if.hysteresis = 0
+      }
     },
     activeAutomation:{
       deep: true,
@@ -188,6 +195,32 @@ emits: ['update:model-value'],
       class="mt-4"
       :label="$t('Value')"
     />
+    <VSwitch
+      v-if="automation.if.hysteresis !== null || useHysto"
+      v-model.number="useHysto"
+      :label="$t('Use hysteresis')"
+      color="primary"
+    />
+    <VSlider
+      v-if="useHysto"
+      v-model.number="automation.if.hysteresis"
+      thumb-label
+      :min="-10"
+      :max="10"
+      :step="0.1"
+      color="primary"
+      class="mt-4"
+      :label="$t('Hysteresis')"
+    >
+      <template #append>
+        <VSheet
+          width="60"
+          class="text-right"
+        >
+          {{ automation.if.hysteresis }}
+        </VSheet>
+      </template>
+    </VSlider>
     <VDivider class="my-4" />
     <div class="text-headline-small text-secondary font-weight-bold d-flex justify-space-between">
       {{ $t('Then') }}
