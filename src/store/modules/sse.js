@@ -55,11 +55,12 @@ const sseModule = {
 
       const activeDevice = await storage.getActiveDevice()
       const url =  `http://${activeDevice.ip}/sse/events`
+      const headers = activeDevice?.token ? { Authorization: `Bearer ${activeDevice.token}` } : null
       //const eventSource = new EventSource(url);
 
       await invoke('stop_sse_stream')
       setTimeout(async() => {
-        await invoke('start_sse_stream', {url})
+        await invoke('start_sse_stream', {url, headers})
       }, 400)
 
       state.connectionUnListen = await listen('sse-status', data=>{

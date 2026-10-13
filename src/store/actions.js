@@ -1,19 +1,47 @@
 import dateToStringDateTime from "@/helpers/dateToStringDateTime.js"
 import {invoke} from "@tauri-apps/api/core";
+import {storage} from "@/store/devices/device_store.js";
 
 // Базовые настройки (axios больше не нужен)
 const API = '/api/'
 
-async function secureApiRequest(method, url, body = null, commit = null) {
+// Извлекаем host (IP) из URL устройства
+function hostOf(url) {
+  try {
+    return new URL(url).hostname
+  } catch (e) {
+    return null
+  }
+}
+
+// Подбираем токен устройства по его IP/хостнейму и формируем заголовок Authorization
+async function authHeaders(url) {
+  const host = hostOf(url)
+  if (!host) return null
+  try {
+    const devices = await storage.loadSavedDevices()
+    const device = devices.find(d => d.ip === host || d.hostname === host)
+    if (device?.token) {
+      return { Authorization: `Bearer ${device.token}` }
+    }
+  } catch (e) {
+    console.error('authHeaders error:', e)
+  }
+  return null
+}
+
+async function secureApiRequest(method, url, body = null, commit = null, headers = undefined) {
   if(commit){
     commit('setLoading', true)
     commit('deviceRequestErrorOff')
   }
   try {
+    // Заголовки: явно переданные или Authorization по устройству (IP) из URL
+    const resolvedHeaders = headers === undefined ? await authHeaders(url) : headers
     // Rust-команда сама вернет готовый объект, если ответ — JSON
     // Если произойдет сетевая ошибка или IP запрещен — выкинет exception
     return await invoke('secure_request', {
-      payload: {url, method, body}
+      payload: {url, method, body, headers: resolvedHeaders}
     })
   } catch (error) {
     const customError = new Error(error)
@@ -49,7 +77,8 @@ async function uploadFirmware(url, file, commit = null) {
     // 3. Вызываем нашу новую чистую команду
     return await invoke('upload_firmware', {
       url: url,
-      fileBytes: byteArray // В JS пишем в camelCase, Tauri сам сопоставит с file_bytes в Rust
+      fileBytes: byteArray, // В JS пишем в camelCase, Tauri сам сопоставит с file_bytes в Rust
+      headers: await authHeaders(url)
     });
   } finally {
     if (commit) {
@@ -503,6 +532,34 @@ export default {
     )
     if (res?.success) {
       dispatch('getAutomations')
+      return res
+    }
+    return null
+  },
+  async trustPairGenerate({state,commit}){
+    const res = await secureApiRequest(
+      'POST',
+      `http://${state.activeDevice.ip}${API}trust/pair/generate`,
+      {},
+      commit
+    )
+    if (res?.success) {
+      commit('setPairCode', res.data.pair)
+      // TODO store code res.data.expires_in
+      return res
+    }
+    return null
+  },
+  async trustPairConsume({commit}, {device, code}){
+    const res = await secureApiRequest(
+      'POST',
+      `http://${device.ip}${API}trust/pair/consume`,
+      {
+        pair: code
+      },
+      commit
+    )
+    if(res?.success) {
       return res
     }
     return null

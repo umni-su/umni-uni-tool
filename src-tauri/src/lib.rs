@@ -28,6 +28,26 @@ struct RequestPayload {
     url: String,
     method: String,
     body: Option<Value>,
+    headers: Option<HashMap<String, String>>,
+}
+
+// Проброс произвольных заголовков в исходящий запрос.
+// Невалидные имена/значения молча пропускаются.
+fn apply_headers(
+    mut rb: reqwest::RequestBuilder,
+    headers: &Option<HashMap<String, String>>,
+) -> reqwest::RequestBuilder {
+    if let Some(h) = headers {
+        for (k, v) in h {
+            if let (Ok(name), Ok(value)) = (
+                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                reqwest::header::HeaderValue::from_str(v),
+            ) {
+                rb = rb.header(name, value);
+            }
+        }
+    }
+    rb
 }
 
 #[tauri::command]
@@ -44,6 +64,7 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let headers = payload.headers;
     let method = payload.method.to_uppercase();
     let request_builder = match method.as_str() {
         "GET" => {
@@ -83,13 +104,15 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
         _ => return Err("Method not supported".into()),
     };
 
+    let request_builder = apply_headers(request_builder, &headers);
+
     let response = request_builder.send().await.map_err(|e| e.to_string())?;
     let json_res: Value = response.json().await.map_err(|e| e.to_string())?;
     Ok(json_res)
 }
 
 #[tauri::command]
-async fn upload_firmware(url: String, file_bytes: Vec<u8>) -> Result<String, String> {
+async fn upload_firmware(url: String, file_bytes: Vec<u8>, headers: Option<HashMap<String, String>>) -> Result<String, String> {
     // 1. Проверяем URL на валидность и локальный IP (как в вашем secure_request)
     let parsed_url = url::Url::parse(&url).map_err(|_| "Invalid URL")?;
     let host = parsed_url.host_str().ok_or("No host in URL")?;
@@ -105,9 +128,11 @@ async fn upload_firmware(url: String, file_bytes: Vec<u8>) -> Result<String, Str
         .map_err(|e| e.to_string())?;
 
     // 3. Отправляем бинарные данные напрямую через .body() (аналог --data-binary)
-    let response = client.post(&url)
+    let request = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
-        .body(file_bytes) // Передаем вектор байт напрямую
+        .body(file_bytes); // Передаем вектор байт напрямую
+
+    let response = apply_headers(request, &headers)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -153,6 +178,7 @@ async fn start_sse_stream(
     app: AppHandle,
     state: State<'_, SseState>,
     url: String,
+    headers: Option<HashMap<String, String>>,
 ) -> Result<(), String> {
     // 1. Остановка предыдущего потока
     let mut lock = state.0.lock().map_err(|_| "Failed to lock state")?;
@@ -163,9 +189,10 @@ async fn start_sse_stream(
     // 2. Запуск асинхронной задачи
     let handle = tauri::async_runtime::spawn(async move {
         let client = reqwest::Client::new();
-        let response = client
+        let request = client
             .get(&url)
-            .header("Accept", "text/event-stream")
+            .header("Accept", "text/event-stream");
+        let response = apply_headers(request, &headers)
             .send()
             .await;
 
