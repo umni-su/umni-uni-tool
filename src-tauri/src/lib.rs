@@ -29,25 +29,74 @@ struct RequestPayload {
     method: String,
     body: Option<Value>,
     headers: Option<HashMap<String, String>>,
+    hmac_key: Option<String>,
+    hmac_id: Option<String>,
 }
 
 // Проброс произвольных заголовков в исходящий запрос.
 // Невалидные имена/значения молча пропускаются.
 fn apply_headers(
     mut rb: reqwest::RequestBuilder,
-    headers: &Option<HashMap<String, String>>,
+    headers: &HashMap<String, String>,
 ) -> reqwest::RequestBuilder {
-    if let Some(h) = headers {
-        for (k, v) in h {
-            if let (Ok(name), Ok(value)) = (
-                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                reqwest::header::HeaderValue::from_str(v),
-            ) {
-                rb = rb.header(name, value);
-            }
+    for (k, v) in headers {
+        if let (Ok(name), Ok(value)) = (
+            reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+            reqwest::header::HeaderValue::from_str(v),
+        ) {
+            rb = rb.header(name, value);
         }
     }
     rb
+}
+
+// Строит заголовки admin-HMAC (X-UMNI-*) для прошивки.
+// key — webserver-токен (PSK), id — идентификатор (обычно "admin").
+// include_body_hash — для потоковых запросов (OTA): хэш тела в отдельном заголовке.
+fn build_hmac_headers(
+    method: &str,
+    url: &url::Url,
+    body: &[u8],
+    key: &str,
+    id: &str,
+    include_body_hash: bool,
+) -> Result<HashMap<String, String>, String> {
+    use hmac::{Hmac, Mac};
+    use sha2::{Digest, Sha256};
+    type HmacSha256 = Hmac<Sha256>;
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_millis()
+        .to_string();
+
+    let mut nonce_bytes = [0u8; 16];
+    rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut nonce_bytes);
+    let nonce = hex::encode(nonce_bytes);
+
+    let body_hash = hex::encode(Sha256::digest(body));
+
+    let uri = match url.query() {
+        Some(q) => format!("{}?{}", url.path(), q),
+        None => url.path().to_string(),
+    };
+
+    let canonical = format!("UMNI1\n{}\n{}\n{}\n{}\n{}", method, uri, ts, nonce, body_hash);
+
+    let mut mac = HmacSha256::new_from_slice(key.as_bytes()).map_err(|e| e.to_string())?;
+    mac.update(canonical.as_bytes());
+    let sig = hex::encode(mac.finalize().into_bytes());
+
+    let mut h = HashMap::new();
+    h.insert("X-UMNI-Device".to_string(), id.to_string());
+    h.insert("X-UMNI-Timestamp".to_string(), ts);
+    h.insert("X-UMNI-Nonce".to_string(), nonce);
+    h.insert("X-UMNI-Signature".to_string(), sig);
+    if include_body_hash {
+        h.insert("X-UMNI-Body-SHA256".to_string(), body_hash);
+    }
+    Ok(h)
 }
 
 #[tauri::command]
@@ -64,40 +113,61 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let headers = payload.headers;
+    let mut headers = payload.headers.unwrap_or_default();
     let method = payload.method.to_uppercase();
-    let request_builder = match method.as_str() {
-        "GET" => {
+
+    // URL для GET/DELETE (query из body) и точные байты тела для POST/PUT.
+    let (final_url, body_bytes) = match method.as_str() {
+        "GET" | "DELETE" => {
             let mut url = parsed_url;
-            // Добавляем query параметры к URL для GET
             if let Some(params) = &payload.body {
                 let query_string = serde_qs::to_string(&params).map_err(|e| e.to_string())?;
                 url.set_query(Some(&query_string));
             }
-
-            client.get(url.to_string())
+            (url, None)
         }
-        "DELETE" => {
-                let mut url = parsed_url;
-                // Добавляем query параметры к URL для GET
-                if let Some(params) = &payload.body {
-                    let query_string = serde_qs::to_string(&params).map_err(|e| e.to_string())?;
-                    url.set_query(Some(&query_string));
-                }
+        "POST" | "PUT" => {
+            let bytes = match &payload.body {
+                Some(body) => Some(serde_json::to_vec(body).map_err(|e| e.to_string())?),
+                None => None,
+            };
+            (parsed_url, bytes)
+        }
+        _ => return Err("Method not supported".into()),
+    };
 
-                client.delete(url.to_string())
-         }
+    // Admin-HMAC вместо/вместе с Bearer
+    if let Some(key) = payload.hmac_key.as_deref() {
+        let id = payload.hmac_id.as_deref().unwrap_or("admin");
+        let sig = build_hmac_headers(
+            &method,
+            &final_url,
+            body_bytes.as_deref().unwrap_or(b""),
+            key,
+            id,
+            false,
+        )?;
+        headers.extend(sig);
+    }
+
+    let request_builder = match method.as_str() {
+        "GET" => client.get(final_url.to_string()),
+        "DELETE" => client.delete(final_url.to_string()),
         "POST" => {
-            let mut builder = client.post(&payload.url);
-            if let Some(body) = payload.body {
-                builder = builder.json(&body);
+            let mut builder = client.post(final_url.to_string());
+            if let Some(bytes) = &body_bytes {
+                builder = builder
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(bytes.clone());
             }
             builder
         }
         "PUT" => {
-            let mut builder = client.put(&payload.url);
-            if let Some(body) = payload.body {
-                builder = builder.json(&body);
+            let mut builder = client.put(final_url.to_string());
+            if let Some(bytes) = &body_bytes {
+                builder = builder
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(bytes.clone());
             }
             builder
         }
@@ -112,7 +182,13 @@ async fn secure_request(payload: RequestPayload) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn upload_firmware(url: String, file_bytes: Vec<u8>, headers: Option<HashMap<String, String>>) -> Result<String, String> {
+async fn upload_firmware(
+    url: String,
+    file_bytes: Vec<u8>,
+    headers: Option<HashMap<String, String>>,
+    hmac_key: Option<String>,
+    hmac_id: Option<String>,
+) -> Result<String, String> {
     // 1. Проверяем URL на валидность и локальный IP (как в вашем secure_request)
     let parsed_url = url::Url::parse(&url).map_err(|_| "Invalid URL")?;
     let host = parsed_url.host_str().ok_or("No host in URL")?;
@@ -127,17 +203,25 @@ async fn upload_firmware(url: String, file_bytes: Vec<u8>, headers: Option<HashM
         .build()
         .map_err(|e| e.to_string())?;
 
-    // 3. Отправляем бинарные данные напрямую через .body() (аналог --data-binary)
+    // 3. Заголовки: явные + admin-HMAC с привязкой хэша тела (OTA)
+    let mut hdrs = headers.unwrap_or_default();
+    if let Some(key) = hmac_key.as_deref() {
+        let id = hmac_id.as_deref().unwrap_or("admin");
+        let sig = build_hmac_headers("POST", &parsed_url, &file_bytes, key, id, true)?;
+        hdrs.extend(sig);
+    }
+
+    // 4. Отправляем бинарные данные напрямую через .body() (аналог --data-binary)
     let request = client.post(&url)
         .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
         .body(file_bytes); // Передаем вектор байт напрямую
 
-    let response = apply_headers(request, &headers)
+    let response = apply_headers(request, &hdrs)
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    // 4. Получаем ответ как текст (устройства на прошивку часто отвечают "OK" или отправляют пустой ответ, а не JSON)
+    // 5. Получаем ответ как текст (устройства на прошивку часто отвечают "OK" или отправляют пустой ответ, а не JSON)
     let res_text = response.text().await.map_err(|e| e.to_string())?;
 
     Ok(res_text)
@@ -179,11 +263,22 @@ async fn start_sse_stream(
     state: State<'_, SseState>,
     url: String,
     headers: Option<HashMap<String, String>>,
+    hmac_key: Option<String>,
+    hmac_id: Option<String>,
 ) -> Result<(), String> {
     // 1. Остановка предыдущего потока
     let mut lock = state.0.lock().map_err(|_| "Failed to lock state")?;
     if let Some(handle) = lock.take() {
         handle.abort();
+    }
+
+    // Набор заголовков: явные + admin-HMAC (GET, пустое тело)
+    let mut hdrs = headers.unwrap_or_default();
+    if let Some(key) = hmac_key.as_deref() {
+        let parsed = url::Url::parse(&url).map_err(|_| "Invalid URL")?;
+        let id = hmac_id.as_deref().unwrap_or("admin");
+        let sig = build_hmac_headers("GET", &parsed, b"", key, id, false)?;
+        hdrs.extend(sig);
     }
 
     // 2. Запуск асинхронной задачи
@@ -192,7 +287,7 @@ async fn start_sse_stream(
         let request = client
             .get(&url)
             .header("Accept", "text/event-stream");
-        let response = apply_headers(request, &headers)
+        let response = apply_headers(request, &hdrs)
             .send()
             .await;
 

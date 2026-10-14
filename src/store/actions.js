@@ -14,20 +14,30 @@ function hostOf(url) {
   }
 }
 
-// Подбираем токен устройства по его IP/хостнейму и формируем заголовок Authorization
-async function authHeaders(url) {
+// Использовать admin-HMAC вместо Bearer (Bearer остаётся при USE_HMAC = false)
+const USE_HMAC = true
+const ADMIN_ID = 'admin'
+
+// Подбираем токен устройства по его IP/хостнейму
+async function tokenFor(url) {
   const host = hostOf(url)
   if (!host) return null
   try {
     const devices = await storage.loadSavedDevices()
     const device = devices.find(d => d.ip === host || d.hostname === host)
-    if (device?.token) {
-      return { Authorization: `Bearer ${device.token}` }
-    }
+    return device?.token || null
   } catch (e) {
-    console.error('authHeaders error:', e)
+    console.error('tokenFor error:', e)
+    return null
   }
-  return null
+}
+
+// Поля авторизации для invoke: HMAC-ключ либо Bearer-заголовок
+async function authFields(url) {
+  const token = await tokenFor(url)
+  if (!token) return {}
+  if (USE_HMAC) return { hmacKey: token, hmacId: ADMIN_ID }
+  return { headers: { Authorization: `Bearer ${token}` } }
 }
 
 async function secureApiRequest(method, url, body = null, commit = null, headers = undefined) {
@@ -36,12 +46,12 @@ async function secureApiRequest(method, url, body = null, commit = null, headers
     commit('deviceRequestErrorOff')
   }
   try {
-    // Заголовки: явно переданные или Authorization по устройству (IP) из URL
-    const resolvedHeaders = headers === undefined ? await authHeaders(url) : headers
+    // Авторизация: явно переданные заголовки или HMAC/Bearer по IP устройства из URL
+    const auth = headers === undefined ? await authFields(url) : { headers }
     // Rust-команда сама вернет готовый объект, если ответ — JSON
     // Если произойдет сетевая ошибка или IP запрещен — выкинет exception
     return await invoke('secure_request', {
-      payload: {url, method, body, headers: resolvedHeaders}
+      payload: { url, method, body, ...auth }
     })
   } catch (error) {
     const customError = new Error(error)
@@ -78,7 +88,7 @@ async function uploadFirmware(url, file, commit = null) {
     return await invoke('upload_firmware', {
       url: url,
       fileBytes: byteArray, // В JS пишем в camelCase, Tauri сам сопоставит с file_bytes в Rust
-      headers: await authHeaders(url)
+      ...(await authFields(url))
     });
   } finally {
     if (commit) {
