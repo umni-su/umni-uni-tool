@@ -24,6 +24,7 @@ fn is_private_ip(host: &str) -> bool {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RequestPayload {
     url: String,
     method: String,
