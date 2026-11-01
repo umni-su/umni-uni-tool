@@ -47,6 +47,10 @@ export default {
   setLoading(state, loading) {
     state.loading = loading
   },
+  setAuthenticated(state, v) {
+    state.authenticated = v
+    state.authChecked = true
+  },
   setDebug(state, debug) {
     state.debug = debug
   },
@@ -88,6 +92,9 @@ export default {
   setScanMode(state, scanMode) {
     state.scanMode = scanMode
   },
+  setBottomNav(state, v) {
+    state.bottomNav = v
+  },
 
   async saveDevice(state, device){
     const index = state.devices.findIndex(d => d.hostname === device.hostname)
@@ -110,6 +117,8 @@ export default {
     }
     state.activeDevice = activeDevice
     state.devices = await deviceStorage.loadSavedDevices()
+    // Reset pair code on changing active device
+    state.pairCode = null
   },
 
   // /api/systeminfo
@@ -344,5 +353,12 @@ export default {
   },
   setActiveAutomation(state, activeAutomation){
     state.activeAutomation = activeAutomation
-  }
+  },
+
+  setPairCode(state, pairCode){
+    state.pairCode = pairCode
+  },
+  resetPairCode(state){
+    state.pairCode = null
+  },
 }

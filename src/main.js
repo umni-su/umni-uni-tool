@@ -37,6 +37,9 @@ const dark = {
 }
 
 const vuetify = createVuetify({
+  display: {
+    mobileBreakpoint: 'sm',
+  },
   components,
   directives,
   defaults: {

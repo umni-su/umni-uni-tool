@@ -1,5 +1,11 @@
 export default {
   // UI
+  isAuthenticated(state){
+    return state.authenticated;
+  },
+  isAuthChecked(state){
+    return state.authChecked;
+  },
   getAppNotifications(state){
     return state.appNotifications;
   },
@@ -253,5 +259,11 @@ export default {
   },
   getActiveAutomation(state){
     return state.activeAutomation
+  },
+  getPairCode(state){
+    return state.pairCode
+  },
+  getBottomNav(state){
+    return state.bottomNav
   }
 }

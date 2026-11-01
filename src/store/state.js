@@ -1,4 +1,8 @@
 export default {
+  authenticated:false,
+  // true, когда попытка авторизации завершилась (успех или провал).
+  // Нужен, чтобы не показывать экран токена, пока идёт первая проверка устройства.
+  authChecked:false,
   appNotifications: [],
   automations: [],
   activeAutomation: null,
@@ -16,6 +20,8 @@ export default {
   reboot: false,
   flash: false,
   scanRf433: false,
+  pairCode: null,
+  bottomNav: false,
 
   state: {
     info: null,           // /api/systeminfo

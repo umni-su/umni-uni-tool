@@ -9,7 +9,7 @@ const API = '/api/'
 function hostOf(url) {
   try {
     return new URL(url).hostname
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -40,6 +40,15 @@ async function authFields(url) {
   return { headers: { Authorization: `Bearer ${token}` } }
 }
 
+/**
+ *
+ * @param method
+ * @param url
+ * @param body
+ * @param commit
+ * @param headers
+ * @returns {Promise<unknown>}
+ */
 async function secureApiRequest(method, url, body = null, commit = null, headers = undefined) {
   if(commit){
     commit('setLoading', true)
@@ -50,10 +59,29 @@ async function secureApiRequest(method, url, body = null, commit = null, headers
     const auth = headers === undefined ? await authFields(url) : { headers }
     // Rust-команда сама вернет готовый объект, если ответ — JSON
     // Если произойдет сетевая ошибка или IP запрещен — выкинет exception
-    return await invoke('secure_request', {
+    const res = await invoke('secure_request', {
       payload: { url, method, body, ...auth }
     })
+    if(res.error === 'Unauthorized') {
+      const unAuthError  = new Error(res.error)
+      unAuthError.status = 401
+      unAuthError.message = res.error
+      if(commit) {
+        commit('setAuthenticated', false)
+      }
+      throw unAuthError
+    }
+    if(res.success){
+      if(commit) {
+        commit('setAuthenticated', true)
+      }
+    }
+    return res
   } catch (error) {
+    // 401 не оборачиваем: выше (LoginPage) важно отличить его от сетевой ошибки
+    if(error?.status === 401) {
+      throw error
+    }
     const customError = new Error(error)
     console.error(`Secure Request Error [${method}]:`, error)
     if(commit){
@@ -115,6 +143,35 @@ export default {
       console.error('getSystemInfo error:', error)
       throw error
     }
+  },
+
+  /**
+   * Логин по токену устройства.
+   * Сохраняет токен и проверяет его пробным запросом до переключения интерфейса,
+   * чтобы экран с вводом токена не мигал при неверном значении.
+   */
+  async loginWithToken({ state, commit }, token) {
+    const device = state.activeDevice || await storage.getActiveDevice()
+    if (!device) {
+      const err = new Error('No active device')
+      err.status = 422
+      throw err
+    }
+
+    const updated = { ...device, token: token.trim() }
+    // токен нужен в хранилище: tokenFor() берёт его оттуда при каждом запросе
+    await storage.updateDevice(updated.hostname, { token: updated.token })
+
+    const res = await secureApiRequest('GET', `http://${updated.ip}${API}systeminfo`, null, null)
+    if (!res?.success) {
+      const err = new Error('Unauthorized')
+      err.status = 401
+      throw err
+    }
+
+    // сменился объект активного устройства -> App.vue поднимет SSE и загрузит данные
+    commit('setActiveDevice', updated)
+    return updated
   },
 
   async checkDevice({ commit, state }, ip) {

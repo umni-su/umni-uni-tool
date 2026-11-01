@@ -1,34 +1,28 @@
 <script>
-import { listen } from '@tauri-apps/api/event';
-import {storage as deviceStorage} from "@/store/devices/device_store.js";
-
 import UmniLogo from "../chunks/UmniLogo.vue";
 import ThemeSwitcher from "../chunks/ThemeSwitcher.vue";
 import AppLoader from "../chunks/widgets/AppLoader.vue";
-import ModalDialog from "@/components/chunks/ModalDialog.vue";
-import AddDeviceModal from "@/components/AddDeviceModal.vue";
 import NavigationPanel from "@/components/chunks/NavigationPanel.vue";
 import RebootPage from "@/components/pages/RebootPage.vue";
 import DebugSwitcher from "@/components/chunks/DebugSwitcher.vue";
-import {invoke} from "@tauri-apps/api/core";
+import BottomMenu from "@/components/chunks/BottomMenu.vue";
 
 
 export default {
   name: "DefaultPage",
   components: {
+    BottomMenu,
     DebugSwitcher,
-    RebootPage, NavigationPanel, AddDeviceModal, ModalDialog, ThemeSwitcher, UmniLogo, AppLoader},
+    RebootPage, NavigationPanel, ThemeSwitcher, UmniLogo, AppLoader},
   data(){
     return {
-      unListen: null,
+      bottom: true,
       opened: false,
       loading: false,
     }
   },
   computed: {
-    isScanning(){
-      return this.$store.getters['isScanMode'];
-    },
+
     devices(){
       return this.$store.getters['getDevices']
     },
@@ -92,84 +86,21 @@ export default {
     }
   },
   watch:{
-    isScanning(v){
-      this.opened = v;
-    },
-    async opened(v){
-      this.$store.commit('setScanMode', v)
-      try {
-        await invoke('start_mdns_discovery');
-      } catch (err) {
-        console.error("Ошибка mDNS:", err);
-      }
-    },
-    activeDevice:{
-      async handler(val){
-        if(val !== null){
-          if (this.$route.path === '/') {
-            this.$router.push({name: 'home_panel'})
-          }
-          this.$store.dispatch('closeSSE')
-          await this.$store.dispatch('initSSE')
 
-          this.loading = true
-          await this.getSystemInfo().finally(() => this.loading = false)
-        }
-      }
-    },
   },
   created(){
     this.$moment.locale(this.$i18n.locale);
   },
-  async beforeCreate() {
-    const activeDevice = await deviceStorage.getActiveDevice()
-    this.$store.commit('setActiveDevice', activeDevice)
-  },
+
   async beforeMount() {
     const pack = await import('../../../package.json')
     this.$store.commit('setVersion', pack.version)
   },
-  unmounted() {
-    if (this.unListen) {
-      this.unListen(); // Вызываем сохраненную функцию отписки
-      this.unListen = null;
-    }
-  },
-  async mounted() {
-    await this.loadDevices();
-    this.unListen = await listen('device-found', (event) => {
-      //const [hostname, ips, txt] = event.payload;
-      const [name, hostname, ips, txt] = event.payload
-      const ip = ips[0];
-      this.$store.commit('saveDevice',{
-        name: hostname.replace('.local.', '.local'),
-        hostname: hostname.replace('.local.', '.local'),
-        ip: ip,
-        lastSeen: Date.now(),
-        fromScan:true,
-        txt
-      })
-    });
-  },
   methods: {
-    async loadDevices() {
-      const devices = await deviceStorage.loadSavedDevices();
-      this.$store.commit('setDevices', devices)
-    },
-
     async getSystemInfo() {
       await this.$store.dispatch('getSystemInfo')
     },
-    async logout() {
-      await this.$store.dispatch('logOut')
-    },
-    setActiveDevice(device){
-      this.$store.commit('setActiveDevice', device)
-      this.opened = false
-    },
-    openAddDevice(){
-      this.$store.commit('setAddDevice', true)
-    },
+
     toggleSidebar(){
       this.$store.commit('setSidebarOpen', !this.isOpen);
     },
@@ -205,9 +136,17 @@ export default {
             :fill="theme === 'light'?'white' : 'white'"
             :width="35"
             :height="35"
-            class=""
           />
         </VAppBarNavIcon>
+        <VBtn
+          v-if="mobile"
+          prepend-icon="mdi-chip"
+          :text="activeDevice.title"
+          color="default"
+          density="comfortable"
+          variant="plain"
+          @click="$store.commit('setBottomNav', true)"
+        />
       </template>
       <template #title>
         <div
@@ -215,11 +154,13 @@ export default {
           class="text-center"
         >
           <VBtn
+            v-if="!mobile"
+            prepend-icon="mdi-chip"
             :text="titleText"
             color="default"
             density="comfortable"
             variant="tonal"
-            @click="$store.commit('setScanMode', true)"
+            @click="$store.commit('setBottomNav', true)"
           />
         </div>
       </template>
@@ -291,62 +232,8 @@ export default {
         </VSheet>
         <AppLoader />
       </VSheet>
-      <AddDeviceModal />
     </VMain>
-    <ModalDialog
-      v-model="opened"
-      :title="$t('Choose device')"
-    >
-      <VList>
-        <VListItem
-          v-for="device in devicesFromScan"
-          :key="device"
-          rounded="lg"
-          :value="device"
-        >
-          <template #title>
-            {{ device.title }}
-          </template>
-          <template #subtitle>
-            <VChip
-              rounded="pill"
-              size="small"
-            >
-              {{ device.name.toUpperCase() }}
-            </VChip>
-            <VChip
-              rounded="pill"
-              size="small"
-              class="ml-2"
-            >
-              {{ device.ip }}
-            </VChip>
-          </template>
-          <template #append>
-            <VBtn
-              density="compact"
-              rounded="pill"
-              icon="mdi-chevron-right"
-              @click="setActiveDevice(device)"
-            />
-          </template>
-        </VListItem>
-      </VList>
-      <template #actions>
-        <VSheet
-          class="text-center"
-          width="100%"
-        >
-          <VBtn
-            prepend-icon="mdi-plus"
-            rounded="pill"
-            variant="elevated"
-            :text="$t('Add device')"
-            @click="openAddDevice"
-          />
-        </VSheet>
-      </template>
-    </ModalDialog>
+    <BottomMenu />
   </VSheet>
 </template>
 

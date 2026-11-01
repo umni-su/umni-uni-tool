@@ -1,37 +1,100 @@
 <script>
-import {isPermissionGranted, requestPermission, sendNotification} from '@tauri-apps/plugin-notification';
+import {isPermissionGranted, requestPermission} from '@tauri-apps/plugin-notification';
+import {listen} from '@tauri-apps/api/event';
 
 import LoginPage from "@/components/pages/LoginPage.vue";
-import InstallPage from "@/components/pages/InstallPage.vue";
 import DefaultPage from "@/components/pages/DefaultPage.vue";
 import AppNotifications from "@/components/chunks/AppNotifications.vue";
-import RebootPage from "@/components/pages/RebootPage.vue";
+import {storage as deviceStorage} from "@/store/devices/device_store.js";
+import AddDeviceModal from "@/components/AddDeviceModal.vue";
+import DeviceDiscoveryModal from "@/components/chunks/DeviceDiscoveryModal.vue";
 export default {
   name: 'App',
   components: {
-    RebootPage,
+    DeviceDiscoveryModal,
+    AddDeviceModal,
     AppNotifications,
     DefaultPage,
-    InstallPage,
     LoginPage
   },
   data() {
     return {
-      visible: false
+      visible: false,
+      unListenDevices: null
     }
   },
   computed: {
     authenticated() {
-      return true
+      return this.$store.getters['isAuthenticated']
     },
-    installed() {
-      return true
+    authChecked() {
+      return this.$store.getters['isAuthChecked']
+    },
+    activeDevice() {
+      return this.$store.getters['getActiveDevice']
     },
     theme() {
       return this.$store.getters['getTheme']
+    },
+
+  },
+
+  watch:{
+    activeDevice:{
+      async handler(val){
+        if(val !== null){
+          if (this.$route.path === '/') {
+            this.$router.push({name: 'home_panel'})
+          }
+          this.$store.dispatch('closeSSE')
+          await this.$store.dispatch('initSSE')
+
+          this.loading = true
+          try {
+            const res = await this.getSystemInfo()
+            // false — запрос не выполнялся (уже идёт другой), не оставляем UI в подвешенном состоянии
+            if(res === false) {
+              this.$store.commit('setAuthenticated', false)
+            }
+          } catch {
+            this.$store.commit('setActiveDevice', null)
+            this.$store.commit('setAuthenticated', false)
+          } finally {
+            this.loading = false
+          }
+        }
+      }
+    },
+  },
+  async beforeCreate() {
+    const [activeDevice, devices] = await Promise.all([
+      deviceStorage.getActiveDevice(),
+      deviceStorage.loadSavedDevices()
+    ])
+    this.$store.commit('setDevices', devices)
+    if (activeDevice === null) {
+      // проверять нечего — показываем экран токена/сканирования сразу
+      this.$store.commit('setAuthenticated', false)
     }
+    this.$store.commit('setActiveDevice', activeDevice)
   },
   async mounted() {
+    // Слушатель mDNS живёт в App.vue, т.к. DefaultPage размонтирован на экране токена,
+    // а сканировать устройства нужно и оттуда.
+    this.unListenDevices = await listen('device-found', (event) => {
+      const [, hostname, ips, txt] = event.payload
+      const name = hostname.replace('.local.', '.local')
+      this.$store.commit('saveDevice', {
+        name,
+        hostname: name,
+        ip: ips[0],
+        lastSeen: Date.now(),
+        online: true,
+        fromScan: true,
+        txt
+      })
+    })
+
     let permissionGranted = await isPermissionGranted();
 
     if (!permissionGranted) {
@@ -45,11 +108,19 @@ export default {
       console.warn('✗ Нет разрешения на уведомления');
     }
   },
+  beforeUnmount() {
+    if (this.unListenDevices) {
+      this.unListenDevices()
+      this.unListenDevices = null
+    }
+  },
   created() {
     this.visible = true
   },
   methods: {
-
+    async getSystemInfo() {
+      return this.$store.dispatch('getSystemInfo')
+    },
   }
 }
 </script>
@@ -59,10 +130,21 @@ export default {
     v-if="visible"
     :theme="theme"
   >
-    <LoginPage v-if="installed && !authenticated" />
-    <InstallPage v-else-if="!installed" />
-    <DefaultPage v-else-if="installed && authenticated" />
+    <LoginPage v-if="authChecked && !authenticated" />
+    <DefaultPage v-else-if="authenticated" />
+    <VSheet
+      v-else
+      color="primary"
+      class="fill-height d-flex align-center justify-center"
+    >
+      <VProgressCircular
+        indeterminate
+        size="48"
+      />
+    </VSheet>
     <AppNotifications />
+    <DeviceDiscoveryModal />
+    <AddDeviceModal />
   </VApp>
 </template>
 

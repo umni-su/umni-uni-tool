@@ -16,7 +16,9 @@ export const storage = {
       ip: device.ip,
       hostname: device.hostname,
       lastSeen: Date.now(),
-      active: active
+      active: active,
+      online: device.online,
+      token: device.token
     });
 
     await deviceStore.save();
@@ -65,6 +67,7 @@ export const storage = {
     const existing = await deviceStore.get(hostname);
     if (existing) {
       newData.lastSeen = Date.now()
+      newData.online = true
       await deviceStore.set(hostname, { ...existing, ...newData });
       await deviceStore.save();
     }

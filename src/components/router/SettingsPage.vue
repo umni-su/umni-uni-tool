@@ -5,6 +5,8 @@ import RebootConfirmation from "@/components/RebootConfirmation.vue";
 import IpTypeSelect from "@/components/chunks/IpTypeSelect.vue";
 import {invoke} from "@tauri-apps/api/core";
 import MaintenanceCard from "@/components/chunks/MaintenanceCard.vue";
+import {storage as deviceStorage} from "@/store/devices/device_store.js";
+
 
 export default {
   name: "SettingsPage",
@@ -46,6 +48,9 @@ export default {
     }
   },
   computed: {
+    activeDevice(){
+      return this.$store.getters['getActiveDevice'];
+    },
     settings(){
       return this.$store.getters['getDeviceConfiguration']
     },
@@ -181,6 +186,9 @@ export default {
     },
     async saveSettings(section){
       const serverData = section === 'newtork' ? this.getNetworkConfigurationForServer() : this.settingsData[section];
+      const newDeviceWithToken = {...{},...this.activeDevice}
+      newDeviceWithToken.token = serverData.token
+      await this.$store.commit('saveDevice', newDeviceWithToken)
       const res = await this.$store.dispatch('saveDeviceConfiguration', serverData)
       if(res?.success){
         this.$store.commit('success', this.$t('Saved'))
