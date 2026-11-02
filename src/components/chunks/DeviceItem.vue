@@ -3,10 +3,11 @@ import DebugCard from "@/components/chunks/DebugCard.vue";
 import ModalDialog from "@/components/chunks/ModalDialog.vue";
 import {storage} from "@/store/devices/device_store.js";
 import ConfirmationDialog from "@/components/chunks/ConfirmationDialog.vue";
+import PasswordTextField from "@/components/chunks/PasswordTextField.vue";
 
 export default {
   name: "DeviceItem",
-  components: {ConfirmationDialog, ModalDialog, DebugCard},
+  components: {PasswordTextField, ConfirmationDialog, ModalDialog, DebugCard},
   props:{
     device:{
       type:Object,
@@ -62,6 +63,7 @@ export default {
     async saveDeviceConfiguration(){
       const updateData = {
         title: this.model.title,
+        token: this.model.token,
       }
       const res = await this.$store.dispatch('saveDeviceConfiguration', updateData).catch(()=>{
         this.$store.commit('error', this.$t('Error'))
@@ -74,6 +76,7 @@ export default {
         await storage.updateDevice(this.device.hostname, deviceUpdate)
         this.$store.commit('saveDevice', deviceUpdate)
         this.$store.commit('success', this.$t('Success'))
+        await this.$store.dispatch('getSystemInfo')
       }
     }
   }
@@ -143,7 +146,19 @@ export default {
         v-model="edit"
         :title="device.title"
       >
-        <VTextField v-model="model.title" />
+        <VTextField
+          v-model="model.title"
+          :label="$t('Name')"
+        />
+        <PasswordTextField
+          v-model="model.token"
+          class="mt-4"
+          :label="$t('Access token')"
+        >
+          <template #text>
+            {{ $t('The token stored in the application. To change the device token, go to the configuration.') }}
+          </template>
+        </PasswordTextField>
         <template #actions>
           <VBtn
             prepend-icon="mdi-content-save"

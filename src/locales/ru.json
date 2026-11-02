@@ -256,6 +256,7 @@
   "The device is rebooting": "Устройство перезагружается",
   "The file name must begin with umni-uni": "Название файла должно начинаться с umni-uni",
   "The device has an access token that does not match the token saved in the application. Enter the device token to continue.": "Для устройства установлен токен доступа, не совпадающий с токеном, сохраненным в приложении. Введите токен устройства для продолжения.",
+  "The token stored in the application. To change the device token, go to the configuration.": "Токен, хранимый в приложении. Для смены токена устройства перейдите в конфигурацию.",
   "This type already exists in automation": "Этот тип автоматизации уже существует",
   "The flame is on": "Горелка включена",
   "The flame is off": "Горелка выключена",
