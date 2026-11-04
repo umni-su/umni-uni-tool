@@ -262,6 +262,7 @@
   "This type already exists in automation": "Этот тип автоматизации уже существует",
   "The flame is on": "Горелка включена",
   "The flame is off": "Горелка выключена",
+  "The device is protected by a token": "Устройство защищено токеном",
   "Then" : "Тогда",
   "This usually happens very quickly, so you don't need to be patient": "Обычно это происходит очень быстро, поэтому запасаться терпением не нужно",
   "The value is transmitted from the boiler, or it is set systemically": "Значение передаётся из котла, либо устанавливается системно",

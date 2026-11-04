@@ -165,6 +165,12 @@ export default {
         </div>
       </template>
       <template #append>
+        <VIcon
+          v-if="systemInfo?.token !== null"
+          v-tooltip="$t('The device is protected by a token')"
+          class="opacity-70"
+          icon="mdi-shield-check"
+        />
         <ThemeSwitcher
           class="mx-2"
           density="comfortable"
