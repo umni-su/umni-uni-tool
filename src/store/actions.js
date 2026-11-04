@@ -53,6 +53,7 @@ async function secureApiRequest(method, url, body = null, commit = null, headers
   if(commit){
     commit('setLoading', true)
     commit('deviceRequestErrorOff')
+    commit('resetAppError')
   }
   try {
     // Авторизация: явно переданные заголовки или HMAC/Bearer по IP устройства из URL
@@ -83,8 +84,11 @@ async function secureApiRequest(method, url, body = null, commit = null, headers
       throw error
     }
     const customError = new Error(error)
+    customError.code = 500
+    customError.message = error.message
     console.error(`Secure Request Error [${method}]:`, error)
     if(commit){
+      commit('setAppError', customError)
       commit('deviceRequestErrorOn')
     }
     throw customError

@@ -4,6 +4,7 @@ export default {
   // Нужен, чтобы не показывать экран токена, пока идёт первая проверка устройства.
   authChecked:false,
   appNotifications: [],
+  appError: null,
   automations: [],
   activeAutomation: null,
   theme: localStorage.getItem('theme') !== null ? localStorage.getItem('theme') : 'light',

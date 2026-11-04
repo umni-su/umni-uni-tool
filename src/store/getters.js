@@ -3,6 +3,9 @@ export default {
   isAuthenticated(state){
     return state.authenticated;
   },
+  getAppError(state){
+    return state.appError;
+  },
   isAuthChecked(state){
     return state.authChecked;
   },

@@ -8,9 +8,11 @@ import AppNotifications from "@/components/chunks/AppNotifications.vue";
 import {storage as deviceStorage} from "@/store/devices/device_store.js";
 import AddDeviceModal from "@/components/AddDeviceModal.vue";
 import DeviceDiscoveryModal from "@/components/chunks/DeviceDiscoveryModal.vue";
+import ErrorPage from "@/components/pages/ErrorPage.vue";
 export default {
   name: 'App',
   components: {
+    ErrorPage,
     DeviceDiscoveryModal,
     AddDeviceModal,
     AppNotifications,
@@ -24,6 +26,9 @@ export default {
     }
   },
   computed: {
+    appError(){
+      return this.$store.getters['getAppError']
+    },
     authenticated() {
       return this.$store.getters['isAuthenticated']
     },
@@ -130,18 +135,23 @@ export default {
     v-if="visible"
     :theme="theme"
   >
-    <LoginPage v-if="authChecked && !authenticated" />
-    <DefaultPage v-else-if="authenticated" />
-    <VSheet
-      v-else
-      color="primary"
-      class="fill-height d-flex align-center justify-center"
-    >
-      <VProgressCircular
-        indeterminate
-        size="48"
-      />
-    </VSheet>
+    <ErrorPage v-if="appError !== null" />
+    <VApp v-else>
+      <LoginPage v-if="authChecked && !authenticated" />
+      <DefaultPage v-else-if="authenticated" />
+      <VSheet
+        v-else
+        color="primary"
+        rounded="0"
+        class="fill-height d-flex align-center justify-center"
+      >
+        <VProgressCircular
+          indeterminate
+          size="48"
+        />
+      </VSheet>
+    </VApp>
+
     <AppNotifications />
     <DeviceDiscoveryModal />
     <AddDeviceModal />

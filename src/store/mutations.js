@@ -36,6 +36,12 @@ export default {
     }
     state.appNotifications.push(notification)
   },
+  setAppError(state, error) {
+    state.appError = error
+  },
+  resetAppError(state) {
+    state.appError = null
+  },
   removeAppNotification(state) {
     state.appNotifications = state.appNotifications.filter(n => n.active === true)
   },
