@@ -13,7 +13,7 @@ export default {
     },
   },
   methods: {
-    async getSystemnfo(){
+    async getSystemInfo(){
       await this.$store.commit('setActiveDevice', this.activeDevice)
     }
   }
@@ -52,7 +52,7 @@ export default {
             class="mt-4"
             prepend-icon="mdi-reload"
             :text="$t('Refresh')"
-            @click="getSystemnfo"
+            @click="getSystemInfo"
           />
         </div>
         <div
