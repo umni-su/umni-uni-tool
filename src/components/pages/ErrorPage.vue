@@ -22,16 +22,13 @@ export default {
 </script>
 
 <template>
-  <VSheet
+  <VApp
     color="primary"
     rounded="0"
-    width="100%"
-    height="100%"
-    class="d-flex align-center justify-center"
   >
     <VSheet
-      class="pa-6 text-center"
-      color="transparent"
+      class="d-flex flex-wrap align-center justify-center flex-column pa-6 text-center fill-height"
+      color="primary"
     >
       <UmniLogo
         color="white"
@@ -43,9 +40,9 @@ export default {
       <div class="text-center">
         <div
           v-if="activeDevice"
-          class="text-headline-medium font-weight-bold"
+          class="text-headline-medium font-weight-bold mt-2"
         >
-          {{ activeDevice.title.toUpperCase() }}
+          {{ activeDevice?.title ? activeDevice?.title?.toUpperCase() : activeDevice.hostname }}
         </div>
         <div>
           <VBtn
@@ -60,6 +57,13 @@ export default {
         >
           {{ $t('Connection to device failed') }}
         </div>
+        <div
+          class="text-body-medium py-6 mb-6 opacity-70"
+        >
+          <VSheet>
+            <code>{{ activeDevice }}</code>
+          </VSheet>
+        </div>
         <VBtn
           :text="$t('Scan devices')"
           color="green"
@@ -71,7 +75,7 @@ export default {
         />
       </div>
     </VSheet>
-  </VSheet>
+  </VApp>
 </template>
 
 <style scoped>

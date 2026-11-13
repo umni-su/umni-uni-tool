@@ -108,14 +108,16 @@ export default {
         v-model="sensor.label"
         :label="$t('Name')"
       />
+      <div class="mt-4 text-body-medium opacity-70">
+        {{ $t('Calibration') }}
+      </div>
       <VSlider
         v-model="sensor.offset"
-        class="mt-4"
+        class="mx-n2"
         color="primary"
         :min="-10"
         :max="10"
         :step="0.1"
-        :label="$t('Calibration')"
       >
         <template #append>
           <VBtn

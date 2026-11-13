@@ -68,6 +68,9 @@ export default {
     titleText(){
       return this.title ? `${this.title} (${this.hostname})` : this.hostname
     },
+    emptyToken(){
+      return this.activeDevice?.token === undefined || this.activeDevice?.token === null || this.activeDevice?.token?.length < 1
+    },
     mergedDevices(){
       const merged = []
       this.devicesFromScan.map(deviceScan=>{
@@ -166,7 +169,7 @@ export default {
       </template>
       <template #append>
         <VIcon
-          v-if="systemInfo?.token !== null"
+          v-if="!emptyToken"
           v-tooltip="$t('The device is protected by a token')"
           class="opacity-70"
           icon="mdi-shield-check"

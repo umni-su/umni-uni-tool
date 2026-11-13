@@ -131,12 +131,15 @@ export default {
 </script>
 
 <template>
-  <VApp
+  <VSheet
     v-if="visible"
-    :theme="theme"
+    class="fill-height"
   >
     <ErrorPage v-if="appError !== null" />
-    <VApp v-else>
+    <VApp
+      v-else
+      :theme="theme"
+    >
       <LoginPage v-if="authChecked && !authenticated" />
       <DefaultPage v-else-if="authenticated" />
       <VSheet
@@ -155,7 +158,7 @@ export default {
     <AppNotifications />
     <DeviceDiscoveryModal />
     <AddDeviceModal />
-  </VApp>
+  </VSheet>
 </template>
 
 <style>

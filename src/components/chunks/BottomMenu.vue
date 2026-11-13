@@ -225,6 +225,7 @@ export default {
       </VCardText>
       <template #append>
         <VBtn
+          class="mt-4"
           icon="mdi-close"
           variant="text"
           density="comfortable"

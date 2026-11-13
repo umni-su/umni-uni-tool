@@ -92,6 +92,7 @@ emits: ['update:model-value'],
   watch:{
     open(v){
       this.$emit('update:model-value', v)
+      this.useHysto = this.automation?.if?.hysteresis > 0 || this.automation?.if?.hysteresis < 0
     },
     modelValue(v){
       this.open = v
@@ -197,10 +198,15 @@ emits: ['update:model-value'],
     />
     <VSwitch
       v-if="automation.if.hysteresis !== null || useHysto"
-      v-model.number="useHysto"
+      v-model="useHysto"
+      :true-value="true"
+      :false-value="false"
       :label="$t('Use hysteresis')"
       color="primary"
     />
+    <div class="mt-4 text-body-medium opacity-70">
+      {{ $t('Hysteresis') }}
+    </div>
     <VSlider
       v-if="useHysto"
       v-model.number="automation.if.hysteresis"
@@ -209,8 +215,7 @@ emits: ['update:model-value'],
       :max="10"
       :step="0.1"
       color="primary"
-      class="mt-4"
-      :label="$t('Hysteresis')"
+      class="mx-n2"
     >
       <template #append>
         <VSheet

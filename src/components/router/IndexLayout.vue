@@ -30,6 +30,9 @@ export default {
     hasAi(){
       return this.$store.getters.hasAi1 || this.$store.getters.hasAi2
     },
+    hasNtc(){
+      return this.$store.getters.hasNtc1 || this.$store.getters.hasNtc2
+    },
   },
   methods: {
 
@@ -76,7 +79,7 @@ export default {
         {{ $t('Relays and inputs') }}
       </VTab>
       <VTab
-        v-if="hasAi"
+        v-if="hasAi | hasNtc"
         value="analog"
         prepend-icon="mdi-sine-wave"
         :to="{name:'analog'}"
